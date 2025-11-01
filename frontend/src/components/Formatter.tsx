@@ -690,14 +690,22 @@ function Formatter() {
               targetNode: m.targetSelection.nodeId,
               targetHierarchicalNumber: numberMap.get(m.targetSelection.nodeId) || m.targetSelection.nodeId,
               sourceText: m.sourceSelection.selectedText,
-              targetText: m.targetSelection.selectedText
+              sourceStart: m.sourceSelection.start,
+              sourceEnd: m.sourceSelection.end,
+              targetText: m.targetSelection.selectedText,
+              targetStart: m.targetSelection.start,
+              targetEnd: m.targetSelection.end
             })),
             asTarget: nodeMappings.filter(m => m.targetSelection.nodeId === node.id).map(m => ({
               mappingId: m.id,
               sourceNode: m.sourceSelection.nodeId,
               sourceHierarchicalNumber: numberMap.get(m.sourceSelection.nodeId) || m.sourceSelection.nodeId,
               sourceText: m.sourceSelection.selectedText,
-              targetText: m.targetSelection.selectedText
+              sourceStart: m.sourceSelection.start,
+              sourceEnd: m.sourceSelection.end,
+              targetText: m.targetSelection.selectedText,
+              targetStart: m.targetSelection.start,
+              targetEnd: m.targetSelection.end
             }))
           },
           children: node.children.length > 0 ? processNodes(node.children, hierarchicalNumber) : []
@@ -715,7 +723,7 @@ function Formatter() {
     <div className="p-4 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-800">Text Tree Structure</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Text Formatter</h2>
         <div className="flex gap-2 items-center">
           <span className="text-sm text-gray-600">Total Nodes: {treeData.length}</span>
           {selectedSegment && (
