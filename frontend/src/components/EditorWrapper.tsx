@@ -3,9 +3,11 @@ import Navbar from './Navbar'
 import { getAnnotation } from '../lib/annotation'
 import FirstPanel from './panels/FirstPanel'
 import SecondPanel from './panels/SecondPanel'
+import TextMapper from './TextMapper'
 
 
 function EditorWrapper() {
+    const [mode, setMode] = useState<'alignment' | 'mapper'>('alignment');
     const [firstPanelSelectedText, setFirstPanelSelectedText] = useState<string | null>(null);
     const [firstPanelSelectedTextId, setFirstPanelSelectedTextId] = useState<string | null>(null);
   
@@ -24,9 +26,40 @@ function EditorWrapper() {
         console.log('Selected text annotation:', annotation);
         console.log('Text ID for alignment analysis:', firstPanelSelectedTextId);
     };
+
+    if (mode === 'mapper') {
+        return (
+            <div className="h-screen w-full flex flex-col">
+                <Navbar />
+                <div className="p-2 bg-gray-100 border-b flex justify-between items-center">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setMode('alignment')}
+                            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                        >
+                            ← Back to Alignment
+                        </button>
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-800">Text Mapping Mode</h2>
+                    <div></div>
+                </div>
+                <TextMapper />
+            </div>
+        );
+    }
+
     return (
       <div className="h-screen w-full flex flex-col">
         <Navbar/>
+        <div className="p-2 bg-gray-100 border-b flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800">Alignment Analysis Mode</h2>
+            <button
+                onClick={() => setMode('mapper')}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
+                Switch to Text Mapper
+            </button>
+        </div>
         <div className="flex flex-1">
                 <div className="w-1/2 border-r">
                     <FirstPanel 

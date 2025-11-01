@@ -33,8 +33,7 @@ function Editor({initialValue,ref,isEditable}: EditorPropsType) {
     value={value}  
     height="100%" 
     ref={ref}
-    className="" 
-    style={{color:'red'}} 
+    className="w-full h-full text-lg" 
     onChange={onChange}  
     editable={isEditable}
     onKeyDown={handleKeyDown}
