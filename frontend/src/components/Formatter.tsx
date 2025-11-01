@@ -300,7 +300,7 @@ function Formatter() {
               toggleExpanded(node.id);
             }
           }}
-          className={`
+          className={`relative
             flex items-start p-2 rounded-lg transition-all duration-200
             ${isDraggedOver && dropPosition === 'inside' ? 'bg-blue-100 border-2 border-blue-300' : 'hover:bg-gray-50'}
             ${dragState.draggedNode?.id === node.id ? 'opacity-50' : ''}
@@ -329,72 +329,20 @@ function Formatter() {
           </button>
 
           {/* Drag handle */}
+          <div className="flex items-center justify-center flex-col">
+
           <button 
             draggable
             onDragStart={(e) => handleDragStart(e, node)}
             className="w-6 h-6 flex items-center justify-center mr-2 text-gray-400 hover:text-gray-600 cursor-move border-none bg-transparent"
             aria-label="Drag to reorder"
-          >
+            >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
             </svg>
           </button>
 
-          {/* Node content */}
-          <div className="flex-1 min-w-0">
-            <textarea
-              value={node.text}
-              onChange={(e) => {
-                const newTree = [...treeData];
-                const nodeToUpdate = findNode(newTree, node.id);
-                if (nodeToUpdate) {
-                  nodeToUpdate.text = e.target.value;
-                  setTreeData(newTree);
-                }
-              }}
-              onMouseUp={(e) => {
-                handleTextSelection(node.id, e.target as HTMLTextAreaElement);
-              }}
-              onKeyUp={(e) => {
-                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Shift') {
-                  handleTextSelection(node.id, e.target as HTMLTextAreaElement);
-                }
-              }}
-              className={`
-                w-full p-2 border border-gray-300 rounded bg-white resize-none min-h-[60px]
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                ${selectedSegment === node.id ? 'bg-blue-50 border-blue-400' : ''}
-                ${textSelection?.nodeId === node.id ? 'bg-yellow-50 border-yellow-400' : ''}
-                cursor-text hover:bg-gray-50
-              `}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSegmentClick(node.id);
-              }}
-              rows={2}
-            />
-          </div>
-
-          {/* Section number */}
-          <span className="ml-2 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded font-medium">
-            {getHierarchicalNumber(node.id)}
-          </span>
-
-          {/* Level indicator */}
-          <span className="ml-2 px-2 py-1 text-xs bg-gray-100 rounded text-gray-600">
-            L{node.level}
-          </span>
-
-          {/* Mapping count indicator */}
-          {getMappingCount(node.id) > 0 && (
-            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded font-medium">
-              {getMappingCount(node.id)} mapping{getMappingCount(node.id) > 1 ? 's' : ''}
-            </span>
-          )}
-
-          {/* Node actions */}
-          <div className="ml-2 flex gap-1">
-            <button
+          <button
               onClick={(e) => {
                 e.stopPropagation();
                 addChildNode(node.id);
@@ -418,6 +366,69 @@ function Formatter() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
+
+
+            </div>
+
+          {/* Node content */}
+          <div className="flex-1 min-w-0">
+            <textarea
+              value={node.text}
+              
+              onChange={(e) => {
+                const newTree = [...treeData];
+                const nodeToUpdate = findNode(newTree, node.id);
+                if (nodeToUpdate) {
+                  nodeToUpdate.text = e.target.value;
+                  setTreeData(newTree);
+                }
+              }}
+              onMouseUp={(e) => {
+                handleTextSelection(node.id, e.target as HTMLTextAreaElement);
+              }}
+              onKeyUp={(e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Shift') {
+                  handleTextSelection(node.id, e.target as HTMLTextAreaElement);
+                }
+              }}
+              className={`
+                min-w-[800px]
+                w-full p-2 border border-gray-300 rounded bg-white resize-none min-h-[60px]
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                ${selectedSegment === node.id ? 'bg-blue-50 border-blue-400' : ''}
+                ${textSelection?.nodeId === node.id ? 'bg-yellow-50 border-yellow-400' : ''}
+                cursor-text hover:bg-gray-50
+              `}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSegmentClick(node.id);
+              }}
+              style={{resize:"vertical"}}
+              rows={4}
+            />
+          </div>
+
+       
+
+          {/* Node actions */}
+          <div className="ml-2 absolute top-[-5px] right-0 flex gap-1 flex-col">
+               {/* Section number */}
+          <span className="ml-2 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded font-medium">
+            {getHierarchicalNumber(node.id)}
+          </span>
+
+          {/* Level indicator */}
+          {/* <span className="ml-2 px-2 py-1 text-xs bg-gray-100 rounded text-gray-600">
+            L{node.level}
+          </span> */}
+
+          {/* Mapping count indicator */}
+          {getMappingCount(node.id) > 0 && (
+            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded font-medium">
+              {getMappingCount(node.id)} mapping{getMappingCount(node.id) > 1 ? 's' : ''}
+            </span>
+          )}
+            
           </div>
         </div>
 
@@ -720,7 +731,7 @@ function Formatter() {
   };
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
+    <div className="p-4 container mx-auto">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800">Text Formatter</h2>
@@ -778,28 +789,30 @@ function Formatter() {
             >
               Export JSON
             </button>
-            <button
-              onClick={addRootNode}
-              className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
-            >
-              + Add Root
-            </button>
+           
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className={`flex gap-4 ${showSearchPanel ? '' : 'justify-center'}`}>
+      <div className={`flex flex-1 gap-4 ${showSearchPanel ? '' : 'justify-center'}`}>
         {/* Tree Section */}
-        <div className={showSearchPanel ? 'flex-1' : 'w-full max-w-4xl'}>
-          <div role="tree" className="space-y-1 bg-gray-50 p-4 rounded-lg border">
+        <div className={showSearchPanel ? 'flex-1 max-w-7xl' : 'w-full max-w-4xl '}>
+          <div role="tree" className="space-y-1  p-4 rounded-lg overflow-y-auto max-h-[calc(100vh-100px)]">
             {treeData.map(node => renderNode(node))}
+            <button
+            className='flex justify-center items-center  px-4 py-2 rounded-lg w-full'
+              onClick={addRootNode}
+            >
+              + Add Root
+            </button>
           </div>
+      
         </div>
 
         {/* Search Panel */}
         {showSearchPanel && (
-          <div className="w-80 space-y-4">
+          <div className="w-80 space-y-4 ">
             <div className="bg-white border rounded-lg p-4 h-fit sticky top-4">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Search & Map</h3>
@@ -956,39 +969,7 @@ function Formatter() {
       </div>
 
 
-      {/* Instructions */}
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h3 className="font-medium text-blue-900 mb-2">How to use:</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
-          <div>
-            <h4 className="font-medium mb-1">Drag & Drop:</h4>
-            <ul className="space-y-1">
-              <li>• <strong>Drag handle icon</strong> to reorder segments</li>
-              <li>• <strong>Drop on top third</strong> to place before</li>
-              <li>• <strong>Drop on middle third</strong> to nest inside</li>
-              <li>• <strong>Drop on bottom third</strong> to place after</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-1">Tree Operations:</h4>
-            <ul className="space-y-1">
-              <li>• <strong>Click arrow</strong> to expand/collapse</li>
-              <li>• <strong>+ button</strong> to add child node</li>
-              <li>• <strong>🗑️ button</strong> to delete node</li>
-              <li>• <strong>Edit text</strong> directly in textareas</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-1">Search & Mapping:</h4>
-            <ul className="space-y-1">
-              <li>• <strong>Click segment</strong> to select it</li>
-              <li>• <strong>Show search panel</strong> on the right</li>
-              <li>• <strong>Search text</strong> across all segments</li>
-              <li>• <strong>Click search result</strong> to create mapping</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+    
     </div>
   );
 }
