@@ -1,4 +1,3 @@
-import React from 'react'
 import Editor from './Editor'
 import {root_text,translation_text} from '../data/text.ts'
 function EditorWrapper2() {
