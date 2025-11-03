@@ -78,7 +78,10 @@ function Formatter() {
     <div className={LAYOUT_CONFIG.CONTAINER_CLASSES}>
       {/* Header */}
       <div className={LAYOUT_CONFIG.HEADER_CLASSES}>
+        <div className="flex items-center gap-2">
+        <img src="/img/icon.png" alt="Icon" className="w-10 h-10" />
         <h2 className={LAYOUT_CONFIG.TITLE_CLASSES}>{TEXT_CONSTANTS.TITLE}</h2>
+        </div>
         <div className="flex gap-2 items-center">
           <span className={LAYOUT_CONFIG.STATS_CLASSES}>
             {TEXT_CONSTANTS.LABELS.TOTAL_NODES} {totalNodes}
@@ -143,7 +146,7 @@ function Formatter() {
         <div className={getTreeSectionClasses(showSearchPanel)}>
           <div 
             role="tree" 
-            className={`${LAYOUT_CONFIG.TREE_CONTAINER_CLASSES} max-h-[${UI_CONFIG.MAX_TREE_HEIGHT}]`}
+            className={`${LAYOUT_CONFIG.TREE_CONTAINER_CLASSES} h-[calc(100vh-100px)]`}
           >
             {treeData.map(node => (
               <TreeNodeComponent

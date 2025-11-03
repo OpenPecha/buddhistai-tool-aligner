@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { TreeNode as TreeNodeType, DragState, TextSelection } from '../types';
 import { 
   handleDragStart, 
@@ -47,6 +47,7 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   getHierarchicalNumber,
   getMappingCount,
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
   const isExpanded = expandedNodes.has(node.id);
   const hasChildren = node.children.length > 0;
   const isDraggedOver = dragState.dragOverNode?.id === node.id;
@@ -66,8 +67,49 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
     }
   };
 
+  function renderActionButtons() {
+    return (
+      <div 
+        className={`
+          absolute bottom-2 left-1/2 transform -translate-x-1/2 
+          flex items-center justify-center gap-1 
+          bg-white border border-gray-200 rounded-lg shadow-lg px-2 py-1
+          transition-all duration-200 ease-in-out
+          ${isHovered ? 'opacity-100 visible' : 'opacity-0 invisible'}
+        `}
+        style={{ zIndex: 10 }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddChild(node.id);
+          }}
+          className="w-7 h-7 flex items-center justify-center text-green-600 hover:bg-green-100 rounded transition-colors"
+          title="Add child node"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(node.id);
+          }}
+          className="w-7 h-7 flex items-center justify-center text-red-600 hover:bg-red-100 rounded transition-colors"
+          title="Delete node"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div key={node.id} className="select-none">
+    <div key={node.id} className="select-none  ">
       {/* Drop indicator for 'before' */}
       {isDraggedOver && dropPosition === 'before' && (
         <div className="h-0.5 bg-blue-500 rounded-full mb-1 mx-2"></div>
@@ -78,6 +120,8 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         aria-selected={dragState.draggedNode?.id === node.id}
         aria-expanded={hasChildren ? isExpanded : undefined}
         tabIndex={0}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onDragOver={(e) => handleDragOver(e, node, setDragState)}
         onDragEnter={(e) => handleDragEnter(e, dragCounter)}
         onDragLeave={() => handleDragLeave(dragCounter, setDragState)}
@@ -129,35 +173,11 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             </svg>
           </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddChild(node.id);
-            }}
-            className="w-6 h-6 flex items-center justify-center text-green-600 hover:bg-green-100 rounded transition-colors"
-            title="Add child node"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(node.id);
-            }}
-            className="w-6 h-6 flex items-center justify-center text-red-600 hover:bg-red-100 rounded transition-colors"
-            title="Delete node"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+         
         </div>
 
         {/* Node content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <textarea
             value={node.text}
             onChange={handleTextChange}
@@ -182,6 +202,7 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             style={{ resize: "vertical" }}
             rows={4}
           />
+          {renderActionButtons()}
         </div>
 
         {/* Node metadata */}
