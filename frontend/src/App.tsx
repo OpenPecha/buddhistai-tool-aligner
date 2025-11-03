@@ -1,19 +1,20 @@
-import './App.css'
-// import EditorWrapper from './components/EditorWrapper'
-// import EditorWrapper2 from './components/EditorWrapper2'
-import Formatter from './components/Formatter/Formatter'
-import './index.css'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './App.css';
+import './index.css';
+import Home from './components/Home';
+import FormatterPage from './pages/FormatterPage';
+import AlignerPage from './pages/AlignerPage';
+
 function App() {
-
   return (
-    // <EditorWrapper />
-    <div>
-      {/* <EditorWrapper2/>
-       */}
-      <Formatter/>
-    </div>
-  )
-
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/formatter" element={<FormatterPage />} />
+        <Route path="/aligner" element={<AlignerPage />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

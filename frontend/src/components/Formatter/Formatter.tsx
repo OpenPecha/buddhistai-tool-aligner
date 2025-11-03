@@ -17,8 +17,20 @@ import {
   getTreeSectionClasses,
 } from './utils/formatter-utils';
 import { UI_CONFIG, TEXT_CONSTANTS, LAYOUT_CONFIG } from './constants/formatter-constants';
+import type { ImportData, TreeNode } from './types';
+import {useEffect, useState, useRef } from 'react';
+import SubmitFormat from './components/SubmitFormat.tsx';
 
-function Formatter() {
+// Utility function to convert imported JSON data to TreeNode format
+function convertImportDataToTreeNodes(importData: ImportData): TreeNode[] {
+  return importData.segments;
+}
+
+type FormatterProps = {
+ readonly formatting_data: ImportData;
+}
+
+function Formatter({formatting_data}:FormatterProps) {
   const {
     treeData,
     setTreeData,
@@ -45,6 +57,13 @@ function Formatter() {
     clearMappings,
   } = useTreeState(root_text);
 
+  // Update tree data when imported data changes
+  useEffect(() => {
+    if (formatting_data) {
+      setTreeData(convertImportDataToTreeNodes(formatting_data));
+    }
+  }, [formatting_data, setTreeData]);
+
   // Event handlers hook
   const {
     handleSegmentClick,
@@ -67,6 +86,33 @@ function Formatter() {
     setSegmentMappings,
     setExpandedNodes,
   });
+
+  // Export functionality
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleExportSelect = (exportType: 'text' | 'json') => {
+    if (exportType === 'text') {
+      exportTreeAsText(treeData);
+    } else {
+      exportTreeAsJSON(treeData, segmentMappings);
+    }
+    setShowExportDropdown(false);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Computed values
   const { totalNodes } = getNodeStatistics(treeData);
@@ -94,10 +140,11 @@ function Formatter() {
                   {' | '}{TEXT_CONSTANTS.LABELS.TEXT} "{formatSelectedTextDisplay(textSelection.selectedText, UI_CONFIG.MAX_TEXT_DISPLAY_LENGTH)}"
                 </span>
               )}
-              {' | '}{TEXT_CONSTANTS.LABELS.MAPPINGS} {getNodeMappingCount(selectedSegment, segmentMappings)} | {TEXT_CONSTANTS.LABELS.TOTAL} {segmentMappings.length}
+              {' | '}{TEXT_CONSTANTS.LABELS.MAPPINGS} {getNodeMappingCount(selectedSegment, segmentMappings, treeData)} | {TEXT_CONSTANTS.LABELS.TOTAL} {segmentMappings.length}
             </span>
           )}
           <div className={LAYOUT_CONFIG.BUTTON_GROUP_CLASSES}>
+         
             <button
               onClick={() => setShowSearchPanel(!showSearchPanel)}
               className={`${UI_CONFIG.BUTTON_CLASSES.PRIMARY} ${getSearchPanelToggleClasses(showSearchPanel)}`}
@@ -124,18 +171,39 @@ function Formatter() {
             >
               {TEXT_CONSTANTS.BUTTONS.COLLAPSE_ALL}
             </button>
-            <button
-              onClick={() => exportTreeAsText(treeData)}
-              className={`${UI_CONFIG.BUTTON_CLASSES.PRIMARY} ${UI_CONFIG.BUTTON_CLASSES.EXPORT_TEXT}`}
-            >
-              {TEXT_CONSTANTS.BUTTONS.EXPORT_TEXT}
-            </button>
-            <button
-              onClick={() => exportTreeAsJSON(treeData, segmentMappings)}
-              className={`${UI_CONFIG.BUTTON_CLASSES.PRIMARY} ${UI_CONFIG.BUTTON_CLASSES.EXPORT_JSON}`}
-            >
-              {TEXT_CONSTANTS.BUTTONS.EXPORT_JSON}
-            </button>
+            
+            {/* Export Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                className={`${UI_CONFIG.BUTTON_CLASSES.PRIMARY} bg-green-600 hover:bg-green-700 flex items-center gap-1`}
+              >
+                Export
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showExportDropdown && (
+                <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                  <button
+                    onClick={() => handleExportSelect('text')}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-md"
+                  >
+                    Export Text
+                  </button>
+                  <button
+                    onClick={() => handleExportSelect('json')}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-b-md"
+                  >
+                    Export JSON
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <SubmitFormat treeData={treeData} segmentMappings={segmentMappings} />
+
           </div>
         </div>
       </div>
@@ -166,7 +234,7 @@ function Formatter() {
                 onAddChild={handleAddChild}
                 onDelete={handleDeleteNode}
                 getHierarchicalNumber={(nodeId: string) => getHierarchicalNumber(nodeId, treeData)}
-                getMappingCount={(nodeId: string) => getNodeMappingCount(nodeId, segmentMappings)}
+                getMappingCount={(nodeId: string) => getNodeMappingCount(nodeId, segmentMappings, treeData)}
               />
             ))}
             <button
@@ -192,7 +260,7 @@ function Formatter() {
             onRemoveMapping={handleRemoveMapping}
             getHierarchicalNumber={(nodeId: string) => getHierarchicalNumber(nodeId, treeData)}
             findNode={findNode}
-            getMappingCount={(nodeId: string) => getNodeMappingCount(nodeId, segmentMappings)}
+            getMappingCount={(nodeId: string) => getNodeMappingCount(nodeId, segmentMappings, treeData)}
             getMappingsAsSource={(nodeId: string) => getNodeMappingsAsSource(nodeId, segmentMappings)}
           />
         )}

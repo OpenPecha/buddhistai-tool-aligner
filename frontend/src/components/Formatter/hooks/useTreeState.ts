@@ -3,9 +3,13 @@ import type { TreeNode, DragState, SegmentMapping, TextSelection, SearchResult }
 import { initializeTreeFromText, getAllNodeIds } from '../utils/tree-utils';
 import { resetDragState } from '../utils/drag-utils';
 
-export const useTreeState = (initialText: string) => {
+export const useTreeState = (initialData: string | TreeNode[]) => {
   // Tree data state
-  const [treeData, setTreeData] = useState<TreeNode[]>(() => initializeTreeFromText(initialText));
+  const [treeData, setTreeData] = useState<TreeNode[]>(() => 
+    typeof initialData === 'string' 
+      ? initializeTreeFromText(initialData)
+      : initialData
+  );
   
   // Drag and drop state
   const [dragState, setDragState] = useState<DragState>(resetDragState());

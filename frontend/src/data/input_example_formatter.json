@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "totalNodes": 67,
+    "totalMappings": 0,
+    "exportDate": "2025-11-03T06:06:01.658Z",
+    "version": "1.0"
+  },
+  "segments": [
+    {
+      "id": "node-0",
+      "hierarchicalNumber": "1",
+      "text": "རིན་ཆེན་སེམས་དེ་གཟུང་བར་བྱ་བའི་ཕྱིར། །དེ་བཞིན་གཤེགས་པ་རྣམས་དང་དམ་པའི་ཆོས། །དཀོན་མཆོག་དྲི་མ་མེད་དང་སངས་རྒྱས་སྲས། །ཡོན་ཏན་རྒྱ་མཚོ་རྣམས་ལ་ལེགས་པར་མཆོད། །",
+      "level": 0,
+      "textLength": 150,
+      "mappingCount": 0,
+      "mappings": {
+        "asSource": [],
+        "asTarget": []
+      },
+      "children": [
+        {
+          "id": "node-1762149961534",
+          "hierarchicalNumber": "1.1",
+          "text": "New text segment",
+          "level": 1,
+          "textLength": 16,
+          "mappingCount": 0,
+          "mappings": {
+            "asSource": [],
+            "asTarget": []
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node-1",
+      "hierarchicalNumber": "2",
+      "text": "མེ་ཏོག་འབྲས་བུ་ཇི་སྙེད་ཡོད་པ་དང་། །སྨན་གྱི་རྣམ་པ་གང་དག་ཡོད་པ་དང་། །འཇིག་རྟེན་རིན་ཆེན་ཇི་སྙེད་ཡོད་པ་དང་། །ཆུ་གཙང་ཡིད་དུ་འོང་བ་ཅི་ཡོད་དང་། །",
+      "level": 0,
+      "textLength": 138,
+      "mappingCount": 0,
+      "mappings": {
+        "asSource": [],
+        "asTarget": []
+      },
+      "children": []
+    },
+    {
+      "id": "node-2",
+      "hierarchicalNumber": "3",
+      "text": "རིན་ཆེན་རི་བོ་དང་ནི་དེ་བཞིན་དུ། །ནགས་ཚལ་ས་ཕྱོགས་དབེན་ཞིང་ཉམས་དགའ་དང་། །ལྗོན་ཤིང་མེ་ཏོག་རྒྱན་སྤྲས་སྤུད་པ་དང་། །ཤིང་གང་འབྲས་བཟང་ཡལ་ག་དུད་པ་དང་། །",
+      "level": 0,
+      "textLength": 143,
+      "mappingCount": 0,
+      "mappings": {
+        "asSource": [],
+        "asTarget": []
+      },
+      "children": []
+    }
+  ],
+  "mappings": []
+}

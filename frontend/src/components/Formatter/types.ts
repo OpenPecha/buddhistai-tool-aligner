@@ -1,8 +1,15 @@
 export interface TreeNode {
   id: string;
+  hierarchicalNumber: string;
   text: string;
-  children: TreeNode[];
   level: number;
+  textLength: number;
+  mappingCount: number;
+  mappings: {
+    asSource: any[];
+    asTarget: any[];
+  };
+  children: TreeNode[];
 }
 
 export interface SearchResult {
@@ -39,6 +46,17 @@ export interface ExportData {
     exportDate: string;
     version: string;
   };
-  segments: any[];
+  segments: TreeNode[];
+  mappings: any[];
+}
+
+export interface ImportData {
+  metadata: {
+    totalNodes: number;
+    totalMappings: number;
+    exportDate: string;
+    version: string;
+  };
+  segments: TreeNode[];
   mappings: any[];
 }
