@@ -153,6 +153,16 @@ export const useMappingState = () => {
     }));
   }, []);
 
+  // Clear current selections
+  const clearSelections = useCallback(() => {
+    setState(prevState => ({
+      ...prevState,
+      currentSourceSelection: null,
+      currentTargetSelections: [],
+      isCreatingMapping: false,
+    }));
+  }, []);
+
   // Export mappings function
   const getMappings = useCallback((): MappingExport[] => {
     return state.mappings.map(mapping => ({
@@ -195,6 +205,7 @@ export const useMappingState = () => {
     createMapping,
     deleteMapping,
     clearAllMappings,
+    clearSelections,
     getMappings,
   };
 };

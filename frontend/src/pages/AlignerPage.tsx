@@ -3,9 +3,9 @@ import Aligner from '../components/Aligner';
 
 function AlignerPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {/* Navigation Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -27,9 +27,7 @@ function AlignerPage() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
-        <div className="h-full">
-          <Aligner />
-        </div>
+        <Aligner />
       </main>
     </div>
   );

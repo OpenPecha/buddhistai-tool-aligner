@@ -2,6 +2,7 @@ import React from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import TextLoader from './TextLoader';
 import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '../types';
 
 type EditorPropsType = {
@@ -12,6 +13,7 @@ type EditorPropsType = {
     readonly editorType: EditorType,
     readonly onSelectionChange?: SelectionHandler,
     readonly mappings?: TextMapping[],
+    readonly onTextLoad?: (text: string, source: 'file' | 'api') => void,
 }
 
 
@@ -22,7 +24,8 @@ function Editor({
   editorId,
   editorType,
   onSelectionChange,
-  mappings = []
+  mappings = [],
+  onTextLoad
 }: EditorPropsType) {
   const [value, setValue] = React.useState(initialValue);
   const [currentSelection, setCurrentSelection] = React.useState<TextSelection | null>(null);
@@ -30,7 +33,12 @@ function Editor({
   // Update value when initialValue changes
   React.useEffect(() => {
     setValue(initialValue);
-  }, [initialValue]);
+    // Clear current selection when text changes
+    setCurrentSelection(null);
+    if (onSelectionChange) {
+      onSelectionChange.onSelectionClear(editorId);
+    }
+  }, [initialValue, editorId, onSelectionChange]);
   
   const onChange = React.useCallback((val: string) => {
     console.log('val:', val);
@@ -67,13 +75,28 @@ function Editor({
     }
   }, [isEditable]);
 
+  // Handle text loading from file or API
+  const handleTextLoad = React.useCallback((text: string, source: 'file' | 'api') => {
+    setValue(text);
+    if (onTextLoad) {
+      onTextLoad(text, source);
+    }
+  }, [onTextLoad]);
+
   // Note: Highlighting decorations would be implemented using CodeMirror extensions
   // For now, we'll use CSS classes and visual indicators
 
   return (
     <div className="relative  h-full editor-container overflow-hidden">
       {/* Editor Type Label */}
-     
+      <div className="absolute top-2 left-2 z-10 bg-gray-800 text-white px-2 py-1 rounded text-xs font-medium">
+        {editorType === 'source' ? 'Source Text' : 'Target Text'}
+      </div>
+
+      {/* Text Loader for Target Editor */}
+      {editorType === 'target' && onTextLoad && (
+        <TextLoader onTextLoad={handleTextLoad} />
+      )}
 
       {/* Editor Container with proper width constraints */}
       <div className="w-full h-full box-border" style={{ fontFamily: 'var(--font-monlam)' }}>

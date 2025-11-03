@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Ensure full height inheritance */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 /* Text Mapping Styles */
 .mapping-highlight {
   position: relative;
