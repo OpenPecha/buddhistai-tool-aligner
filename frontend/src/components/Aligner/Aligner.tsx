@@ -1,9 +1,10 @@
 import React from 'react';
 import Editor from './components/Editor';
 import MappingSidebar from './components/MappingSidebar';
-import TextSelector from './components/TextSelector';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMappingState } from './hooks/useMappingState';
+import { useTextSelectionStore } from '../../stores/textSelectionStore';
+import TextSelectionPanel from './components/TextSelectionPanel';
 
 function Aligner() {
   const {
@@ -19,43 +20,14 @@ function Aligner() {
     getMappings,
   } = useMappingState();
 
-  const [sourceText, setSourceText] = React.useState('');
-  const [targetText, setTargetText] = React.useState('');
-  const [isSourceLoaded, setIsSourceLoaded] = React.useState(false);
-  const [isTargetLoaded, setIsTargetLoaded] = React.useState(false);
+  // Use Zustand store for text state
+  const {
+    isSourceLoaded, isTargetLoaded,
+    clearAllSelections
+  } = useTextSelectionStore();
 
-  // Handle text selection from TextSelector
-  const handleSourceTextSelect = React.useCallback((text: string) => {
-    setSourceText(text);
-    setIsSourceLoaded(true);
-    console.log('Source text loaded:', text.substring(0, 100) + '...');
-  }, []);
-
-  const handleTargetTextSelect = React.useCallback((text: string) => {
-    setTargetText(text);
-    setIsTargetLoaded(true);
-    console.log('Target text loaded:', text.substring(0, 100) + '...');
-  }, []);
-
-  // Handle text loading for target editor (from file/API buttons)
-  const handleTargetTextLoad = React.useCallback((text: string, source: 'file' | 'api') => {
-    setTargetText(text);
-    setIsTargetLoaded(true);
-    console.log(`Text loaded from ${source}:`, text.substring(0, 100) + '...');
-  }, []);
-
-  // Check if editors should be shown
-  const showEditors = isSourceLoaded || isTargetLoaded;
-
-  // Function to clear all texts and reset interface
-  const handleClearAll = React.useCallback(() => {
-    setSourceText('');
-    setTargetText('');
-    setIsSourceLoaded(false);
-    setIsTargetLoaded(false);
-    clearAllMappings();
-    clearSelections();
-  }, [clearAllMappings, clearSelections]);
+  // Always show editors
+  const showEditors = true;
 
   const handleExportMappings = () => {
     const exportData = getMappings();
@@ -74,74 +46,82 @@ function Aligner() {
     URL.revokeObjectURL(url);
   };
 
+  // Handle clearing all data
+  const handleClearAll = React.useCallback(() => {
+    clearAllSelections();
+    clearAllMappings();
+    clearSelections();
+  }, [clearAllSelections, clearAllMappings, clearSelections]);
+
   return (
     <div className='w-full h-full flex flex-col'>
-      {/* Text Selection Section */}
-      <TextSelector
-        onSourceTextSelect={handleSourceTextSelect}
-        onTargetTextSelect={handleTargetTextSelect}
-        onClearAll={handleClearAll}
-      />
+      {/* Header */}
+            {(isSourceLoaded || isTargetLoaded) && (
+      <div className="bg-white border-b border-gray-200 p-4 shadow-sm shrink-0">
+        <div className="mx-auto">
+          <div className="flex justify-between items-center">
+              <button
+                onClick={handleClearAll}
+                className="px-4 py-2 bg-red-100 text-red-700 text-sm rounded hover:bg-red-200 transition-colors"
+              >
+                Clear All
+              </button>
+          </div>
+        </div>
+      </div>
+            )}
+            <TextSelectionPanel editorType=""  />
       
       {/* Editors and Sidebar Section - Only show when text is loaded */}
       {showEditors ? (
         <div className="flex-1 min-h-0 container mx-auto">
           <PanelGroup direction="horizontal" className="h-full">
             {/* Source Editor Panel */}
-            {isSourceLoaded && (
-              <Panel 
-                defaultSize={isTargetLoaded ? 35 : 70} 
-                minSize={20} 
-                maxSize={isTargetLoaded ? 50 : 80}
-              >
-                <Editor
-                  initialValue={sourceText}
-                  ref={null}
-                  isEditable={true}
-                  editorId="source-editor"
-                  editorType="source"
-                  onSelectionChange={selectionHandler}
-                  mappings={mappings}
-                />
-              </Panel>
-            )}
+            <Panel 
+              defaultSize={isSourceLoaded && isTargetLoaded ? 35 : 50} 
+              minSize={20} 
+              maxSize={isSourceLoaded && isTargetLoaded ? 50 : 80}
+            >
+               <Editor
+                 ref={null}
+                 isEditable={true}
+                 editorId="source-editor"
+                 editorType="source"
+                 onSelectionChange={selectionHandler}
+                 mappings={mappings}
+               />
+            </Panel>
             
             {/* Resize handle between source and target */}
+            <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
+              <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
+            </PanelResizeHandle>
+            
+            {/* Target Editor Panel */}
+            <Panel 
+              defaultSize={isSourceLoaded && isTargetLoaded ? 35 : 50} 
+              minSize={20} 
+              maxSize={isSourceLoaded && isTargetLoaded ? 50 : 80}
+            >
+               <Editor
+                 ref={null}
+                 isEditable={true}
+                 editorId="target-editor"
+                 editorType="target"
+                 onSelectionChange={selectionHandler}
+                 mappings={mappings}
+               />
+            </Panel>
+            
+            {/* Resize handle between editors and sidebar - only show when both texts are loaded */}
             {isSourceLoaded && isTargetLoaded && (
               <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
                 <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
               </PanelResizeHandle>
             )}
             
-            {/* Target Editor Panel */}
-            {isTargetLoaded && (
-              <Panel 
-                defaultSize={isSourceLoaded ? 35 : 70} 
-                minSize={20} 
-                maxSize={isSourceLoaded ? 50 : 80}
-              >
-                <Editor
-                  initialValue={targetText}
-                  ref={null}
-                  isEditable={true}
-                  editorId="target-editor"
-                  editorType="target"
-                  onSelectionChange={selectionHandler}
-                  mappings={mappings}
-                  onTextLoad={handleTargetTextLoad}
-                />
-              </Panel>
-            )}
-            
-            {/* Resize handle between editors and sidebar */}
-            {showEditors && (
-              <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
-                <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
-              </PanelResizeHandle>
-            )}
-            
-            {/* Mapping Sidebar Panel */}
-            {showEditors && (
+            {/* Mapping Sidebar Panel - only show when both texts are loaded */}
+            {isSourceLoaded && isTargetLoaded && (
               <Panel 
                 defaultSize={30} 
                 minSize={25} 
@@ -156,6 +136,7 @@ function Aligner() {
                   onDeleteMapping={deleteMapping}
                   onClearAllMappings={clearAllMappings}
                   onExportMappings={handleExportMappings}
+                  onClearSelections={clearSelections}
                 />
               </Panel>
             )}

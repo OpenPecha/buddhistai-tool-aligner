@@ -1,12 +1,16 @@
 import { Link } from 'react-router-dom';
 import Aligner from '../components/Aligner';
+import CatalogerButton from '../components/CatalogerButton';
+import { useTextSelectionStore } from '../stores/textSelectionStore';
 
 function AlignerPage() {
+  const { isSourceLoaded, isTargetLoaded } = useTextSelectionStore();
+  const isBothTextLoaded = isSourceLoaded && isTargetLoaded;
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       {/* Navigation Header */}
       <header className="bg-white shadow-sm border-b flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link
@@ -20,13 +24,14 @@ function AlignerPage() {
               </Link>
             </div>
             <h1 className="text-xl font-semibold text-gray-900">Aligner</h1>
-            <div className="w-24"></div> {/* Spacer for centering */}
+            <CatalogerButton />
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
+       
         <Aligner />
       </main>
     </div>

@@ -10,6 +10,7 @@ interface MappingSidebarProps {
   onDeleteMapping: (mappingId: string) => void;
   onClearAllMappings: () => void;
   onExportMappings: () => void;
+  onClearSelections: () => void;
 }
 
 const MappingSidebar: React.FC<MappingSidebarProps> = ({
@@ -21,6 +22,7 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
   onDeleteMapping,
   onClearAllMappings,
   onExportMappings,
+  onClearSelections,
 }) => {
   const formatText = (text: string, maxLength: number = 50) => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
@@ -89,18 +91,31 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
           )}
         </div>
 
-        {/* Create Mapping Button */}
-        <button
-          onClick={onCreateMapping}
-          disabled={!canCreateMapping}
-          className={`w-full py-2 px-3 rounded text-sm font-medium transition-colors ${
-            canCreateMapping
-              ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Create Mapping
-        </button>
+        {/* Action Buttons */}
+        <div className="space-y-2">
+          {/* Create Mapping Button */}
+          <button
+            onClick={onCreateMapping}
+            disabled={!canCreateMapping}
+            className={`w-full py-2 px-3 rounded text-sm font-medium transition-colors ${
+              canCreateMapping
+                ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Create Mapping
+          </button>
+
+          {/* Reset Selections Button */}
+          {(currentSourceSelection || currentTargetSelections.length > 0) && (
+            <button
+              onClick={onClearSelections}
+              className="w-full py-2 px-3 rounded text-sm font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors"
+            >
+              Reset Selections
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mappings List */}

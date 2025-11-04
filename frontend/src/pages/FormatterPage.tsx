@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
 import Formatter from '../components/Formatter/Formatter';
 import formatting_data from '../data/input_example_formatter.json';
+import CatalogerButton from '../components/CatalogerButton';
 
 function FormatterPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link
@@ -21,7 +22,7 @@ function FormatterPage() {
               </Link>
             </div>
             <h1 className="text-xl font-semibold text-gray-900">Formatter</h1>
-            <div className="w-24"></div> {/* Spacer for centering */}
+            <CatalogerButton />
           </div>
         </div>
       </header>
