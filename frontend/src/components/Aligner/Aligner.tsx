@@ -3,7 +3,6 @@ import Editor from './components/Editor';
 import MappingSidebar from './components/MappingSidebar';
 import TextSelector from './components/TextSelector';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { root_text, translation_text } from '../../data/text.ts';
 import { useMappingState } from './hooks/useMappingState';
 
 function Aligner() {
@@ -60,7 +59,6 @@ function Aligner() {
 
   const handleExportMappings = () => {
     const exportData = getMappings();
-    console.log('Exported mappings:', exportData);
     
     // Create downloadable JSON file
     const dataStr = JSON.stringify(exportData, null, 2);
@@ -87,7 +85,7 @@ function Aligner() {
       
       {/* Editors and Sidebar Section - Only show when text is loaded */}
       {showEditors ? (
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 container mx-auto">
           <PanelGroup direction="horizontal" className="h-full">
             {/* Source Editor Panel */}
             {isSourceLoaded && (

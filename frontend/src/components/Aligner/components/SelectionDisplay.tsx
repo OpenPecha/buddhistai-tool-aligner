@@ -71,10 +71,6 @@ const TextSelector: React.FC<TextSelectorProps> = ({
   return (
     <div className="bg-white border-b border-gray-200 p-6 shadow-sm">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Text Selection</h2>
-          <p className="text-sm text-gray-600">Choose or enter texts for alignment</p>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Source Text Section */}

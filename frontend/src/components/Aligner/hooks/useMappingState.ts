@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { 
   TextMapping, 
   TextSelection, 
@@ -97,11 +97,11 @@ export const useMappingState = () => {
     });
   }, []);
 
-  // Create selection handler
-  const selectionHandler: SelectionHandler = {
+  // Create selection handler (memoized to prevent re-renders)
+  const selectionHandler: SelectionHandler = useMemo(() => ({
     onTextSelect: handleTextSelect,
     onSelectionClear: handleSelectionClear,
-  };
+  }), [handleTextSelect, handleSelectionClear]);
 
   // Create new mapping
   const createMapping = useCallback(() => {

@@ -88,10 +88,7 @@ function Editor({
 
   return (
     <div className="relative  h-full editor-container overflow-hidden">
-      {/* Editor Type Label */}
-      <div className="absolute top-2 left-2 z-10 bg-gray-800 text-white px-2 py-1 rounded text-xs font-medium">
-        {editorType === 'source' ? 'Source Text' : 'Target Text'}
-      </div>
+  
 
       {/* Text Loader for Target Editor */}
       {editorType === 'target' && onTextLoad && (
