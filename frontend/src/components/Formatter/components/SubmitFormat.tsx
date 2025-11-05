@@ -15,9 +15,9 @@ function SubmitFormat({treeData, segmentMappings}: submitFormatProps) {
   return (
     <button
       onClick={handleSubmitFormat}
-      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 text-sm font-medium"
+      className="px-4 py-2 w-full bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 text-sm font-medium"
     >
-      Submit Format
+      Publish
     </button>
   )
 }

@@ -3,6 +3,8 @@ export interface TreeNode {
   hierarchicalNumber: string;
   text: string;
   level: number;
+  type?: 'heading' | 'paragraph';
+  lineNumber?: number;
   textLength: number;
   mappingCount: number;
   mappings: {

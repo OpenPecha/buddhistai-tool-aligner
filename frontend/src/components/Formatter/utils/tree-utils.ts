@@ -111,9 +111,17 @@ export const initializeTreeFromText = (text: string): TreeNode[] => {
   const segments = text.split('\n').filter(segment => segment.trim() !== '');
   return segments.map((segment, index) => ({
     id: `node-${index}`,
+    hierarchicalNumber: '',
     text: segment.trim(),
+    level: 0,
+    type: 'paragraph' as const,
+    textLength: segment.trim().length,
+    mappingCount: 0,
+    mappings: {
+      asSource: [],
+      asTarget: [],
+    },
     children: [],
-    level: 0
   }));
 };
 
@@ -149,4 +157,49 @@ export const flattenTreeToText = (nodes: TreeNode[], level: number = 0): string[
     }
   }
   return result;
+};
+
+/**
+ * Move a node to become a child of another node
+ */
+export const moveNodeAsChild = (nodes: TreeNode[], nodeId: string, targetId: string): TreeNode[] => {
+  // Find the node to move
+  let nodeToMove: TreeNode | null = null;
+  
+  // First, extract the node
+  const findAndExtract = (items: TreeNode[]): TreeNode[] => {
+    return items.filter(item => {
+      if (item.id === nodeId) {
+        nodeToMove = { ...item };
+        return false;
+      }
+      item.children = findAndExtract(item.children);
+      return true;
+    });
+  };
+  
+  let newTree = findAndExtract([...nodes]);
+  
+  if (!nodeToMove) return nodes;
+  
+  // Now insert it as a child of the target
+  const insertAsChild = (items: TreeNode[]): TreeNode[] => {
+    return items.map(item => {
+      if (item.id === targetId) {
+        return {
+          ...item,
+          children: [...item.children, { ...nodeToMove!, level: item.level + 1 }]
+        };
+      }
+      return {
+        ...item,
+        children: insertAsChild(item.children)
+      };
+    });
+  };
+  
+  newTree = insertAsChild(newTree);
+  
+  // Update levels recursively
+  return updateLevels(newTree);
 };

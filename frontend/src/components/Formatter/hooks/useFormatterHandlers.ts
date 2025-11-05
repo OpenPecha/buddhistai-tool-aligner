@@ -2,7 +2,8 @@ import type { TreeNode, SearchResult, TextSelection, SegmentMapping } from '../t
 import { 
   removeNode, 
   updateLevels, 
-  addChildToNode 
+  addChildToNode,
+  moveNodeAsChild 
 } from '../utils/tree-utils';
 import { 
   searchInTree, 
@@ -87,9 +88,17 @@ export const useFormatterHandlers = ({
     const newNodeId = `node-${Date.now()}`;
     const newNode: TreeNode = {
       id: newNodeId,
+      hierarchicalNumber: '',
       text: 'New text segment',
+      level: 0, // Will be updated by updateLevels
+      type: 'paragraph',
+      textLength: 'New text segment'.length,
+      mappingCount: 0,
+      mappings: {
+        asSource: [],
+        asTarget: [],
+      },
       children: [],
-      level: 0 // Will be updated by updateLevels
     };
 
     let newTree = addChildToNode(treeData, parentId, newNode);
@@ -124,12 +133,53 @@ export const useFormatterHandlers = ({
     const newNodeId = `node-${Date.now()}`;
     const newNode: TreeNode = {
       id: newNodeId,
+      hierarchicalNumber: '',
       text: 'New root segment',
+      level: 0,
+      type: 'paragraph',
+      textLength: 'New root segment'.length,
+      mappingCount: 0,
+      mappings: {
+        asSource: [],
+        asTarget: [],
+      },
       children: [],
-      level: 0
     };
     
     setTreeData(prev => [...prev, newNode]);
+  };
+
+  /**
+   * Handle moving a node to become a child of another node
+   */
+  const handleMoveNode = (nodeId: string, targetId: string) => {
+    // Don't allow a node to be moved into itself
+    if (nodeId === targetId) {
+      return;
+    }
+    
+    // Check if target is a descendant of the node being moved
+    const isDescendant = (nodes: TreeNode[], searchId: string, ancestorId: string): boolean => {
+      for (const node of nodes) {
+        if (node.id === searchId) {
+          if (node.id === ancestorId) return true;
+          return isDescendant(node.children, searchId, ancestorId);
+        }
+        if (isDescendant(node.children, searchId, ancestorId)) return true;
+      }
+      return false;
+    };
+    
+    if (isDescendant(treeData, nodeId, targetId)) {
+      alert('Cannot move a node into its own descendant');
+      return;
+    }
+    
+    const newTree = moveNodeAsChild(treeData, nodeId, targetId);
+    setTreeData(newTree);
+    
+    // Expand target node to show the moved child
+    setExpandedNodes(prev => new Set([...prev, targetId]));
   };
 
   return {
@@ -140,5 +190,6 @@ export const useFormatterHandlers = ({
     handleAddChild,
     handleDeleteNode,
     handleAddRootNode,
+    handleMoveNode,
   };
 };

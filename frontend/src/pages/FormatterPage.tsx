@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import Formatter from '../components/Formatter/Formatter';
-import formatting_data from '../data/input_example_formatter.json';
 import CatalogerButton from '../components/CatalogerButton';
 
 function FormatterPage() {
@@ -29,7 +28,7 @@ function FormatterPage() {
 
       {/* Main Content */}
       <main className="flex-1">
-        <Formatter formatting_data={formatting_data} />
+        <Formatter />
       </main>
     </div>
   );
