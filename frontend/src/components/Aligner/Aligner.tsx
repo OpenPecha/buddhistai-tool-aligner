@@ -5,8 +5,12 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMappingState } from './hooks/useMappingState';
 import { useTextSelectionStore } from '../../stores/textSelectionStore';
 import TextSelectionPanel from './components/TextSelectionPanel';
+import { EditorProvider, useEditorContext } from './context';
+import TextNavigationBar from './components/TextNavigationBar';
 
-function Aligner() {
+function AlignerContent() {
+  const { sourceEditorRef, targetEditorRef } = useEditorContext();
+  
   const {
     mappings,
     currentSourceSelection,
@@ -53,24 +57,13 @@ function Aligner() {
     clearSelections();
   }, [clearAllSelections, clearAllMappings, clearSelections]);
 
+
+  const bothTextLoaded= isSourceLoaded && isTargetLoaded;
   return (
     <div className='w-full h-full flex flex-col'>
       {/* Header */}
-            {(isSourceLoaded || isTargetLoaded) && (
-      <div className="bg-white border-b border-gray-200 p-4 shadow-sm shrink-0">
-        <div className="mx-auto">
-          <div className="flex justify-between items-center">
-              <button
-                onClick={handleClearAll}
-                className="px-4 py-2 bg-red-100 text-red-700 text-sm rounded hover:bg-red-200 transition-colors"
-              >
-                Clear All
-              </button>
-          </div>
-        </div>
-      </div>
-            )}
-            <TextSelectionPanel editorType=""  />
+         
+      {bothTextLoaded && <TextNavigationBar />}
       
       {/* Editors and Sidebar Section - Only show when text is loaded */}
       {showEditors ? (
@@ -78,12 +71,12 @@ function Aligner() {
           <PanelGroup direction="horizontal" className="h-full">
             {/* Source Editor Panel */}
             <Panel 
-              defaultSize={isSourceLoaded && isTargetLoaded ? 35 : 50} 
-              minSize={20} 
-              maxSize={isSourceLoaded && isTargetLoaded ? 50 : 80}
+              defaultSize={bothTextLoaded ? 35 : 50} 
+              minSize={20}  
+              maxSize={bothTextLoaded ? 50 : 80}
             >
                <Editor
-                 ref={null}
+                 ref={sourceEditorRef}
                  isEditable={true}
                  editorId="source-editor"
                  editorType="source"
@@ -99,12 +92,12 @@ function Aligner() {
             
             {/* Target Editor Panel */}
             <Panel 
-              defaultSize={isSourceLoaded && isTargetLoaded ? 35 : 50} 
+              defaultSize={bothTextLoaded ? 35 : 50} 
               minSize={20} 
-              maxSize={isSourceLoaded && isTargetLoaded ? 50 : 80}
+              maxSize={bothTextLoaded ? 50 : 80}
             >
                <Editor
-                 ref={null}
+                 ref={targetEditorRef}
                  isEditable={true}
                  editorId="target-editor"
                  editorType="target"
@@ -114,14 +107,14 @@ function Aligner() {
             </Panel>
             
             {/* Resize handle between editors and sidebar - only show when both texts are loaded */}
-            {isSourceLoaded && isTargetLoaded && (
+            {bothTextLoaded && (
               <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
                 <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
               </PanelResizeHandle>
             )}
             
             {/* Mapping Sidebar Panel - only show when both texts are loaded */}
-            {isSourceLoaded && isTargetLoaded && (
+            {bothTextLoaded && (
               <Panel 
                 defaultSize={30} 
                 minSize={25} 
@@ -168,6 +161,14 @@ function Aligner() {
         </div>
       )}
     </div>
+  );
+}
+
+function Aligner() {
+  return (
+    <EditorProvider>
+      <AlignerContent />
+    </EditorProvider>
   );
 }
 

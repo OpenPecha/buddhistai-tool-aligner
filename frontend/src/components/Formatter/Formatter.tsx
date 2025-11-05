@@ -34,9 +34,6 @@ function Formatter({formatting_data}:FormatterProps) {
   const {
     treeData,
     setTreeData,
-    dragState,
-    setDragState,
-    dragCounter,
     expandedNodes,
     setExpandedNodes,
     selectedSegment,
@@ -222,9 +219,6 @@ function Formatter({formatting_data}:FormatterProps) {
                 node={node}
                 treeData={treeData}
                 setTreeData={setTreeData}
-                dragState={dragState}
-                setDragState={setDragState}
-                dragCounter={dragCounter}
                 expandedNodes={expandedNodes}
                 toggleExpanded={toggleExpanded}
                 selectedSegment={selectedSegment}

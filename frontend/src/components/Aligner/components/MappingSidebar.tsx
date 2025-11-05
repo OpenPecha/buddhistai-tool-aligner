@@ -1,5 +1,7 @@
 import React from 'react';
 import type { TextMapping, TextSelection } from '../types';
+import { useTextSelectionStore } from '../../../stores/textSelectionStore';
+import { useEditorContext } from '../context';
 
 interface MappingSidebarProps {
   mappings: TextMapping[];
@@ -24,6 +26,7 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
   onExportMappings,
   onClearSelections,
 }) => {
+  const { generateSentenceMappings } = useEditorContext();
   const formatText = (text: string, maxLength: number = 50) => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
@@ -37,9 +40,17 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
     }).format(date);
   };
 
+
+  const onPublishMappings = async () => {
+
+    const mappings = generateSentenceMappings();
+    console.log(mappings);
+  };
+
   return (
     <div className="w-full bg-white border-l border-gray-200 flex flex-col h-full">
       {/* Header */}
+      <button onClick={onPublishMappings} className="px-4 py-2 bg-green-100 text-green-700 text-sm rounded hover:bg-green-200 transition-colors">Publish Mappings</button>
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <h2 className="text-lg font-semibold text-gray-900">Text Mappings</h2>
         <p className="text-sm text-gray-600 mt-1">

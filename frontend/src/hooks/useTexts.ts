@@ -30,7 +30,7 @@ export const useTexts = (params?: {
 export const useTextInstances = (textId: string|null) => {
 
   return useQuery({
-    queryKey: textKeys.instances(textId || ''),
+    queryKey: textKeys.instances(textId || "textId"),
     queryFn: () => textId ? fetchTextInstances(textId) : null,
     enabled: !!textId,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -47,6 +47,16 @@ export const useInstance = (instanceId: string | null) => {
 
 
   return instanceData;
+};
+
+
+export const useAnnotation = (alignmentId: string | null) => {
+  return useQuery({
+    queryKey: ['alignment', alignmentId],
+    queryFn: () => alignmentId ? fetchAnnotation(alignmentId) : null,
+    enabled: !!alignmentId && alignmentId !== '',
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
 };
 
 

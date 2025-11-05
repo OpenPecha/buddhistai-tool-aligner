@@ -33,12 +33,6 @@ export interface TextSelection {
   selectedText: string;
 }
 
-export interface DragState {
-  draggedNode: TreeNode | null;
-  dragOverNode: TreeNode | null;
-  dropPosition: 'before' | 'after' | 'inside' | null;
-}
-
 export interface ExportData {
   metadata: {
     totalNodes: number;

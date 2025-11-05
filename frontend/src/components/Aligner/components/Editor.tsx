@@ -28,14 +28,10 @@ function Editor({
   const { isSourceLoaded, isTargetLoaded } = useTextSelectionStore();
   
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
-
-  // const isBothTextLoaded = isSourceLoaded && isTargetLoaded;
-  const isBothTextLoaded = true;
-
   return (
     <div className="relative h-full editor-container overflow-hidden">
     
-      {isBothTextLoaded ? 
+      {isTextLoaded ? 
         <TextEditor
           ref={ref}
           isEditable={isEditable}

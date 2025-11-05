@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import type { TreeNode as TreeNodeType, DragState, TextSelection } from '../types';
-import { 
-  handleDragStart, 
-  handleDragOver, 
-  handleDragEnter, 
-  handleDragLeave, 
-  handleDrop 
-} from '../utils/drag-utils';
+import type { TreeNode as TreeNodeType, TextSelection } from '../types';
 import { handleTextSelection } from '../utils/search-utils';
 import { findNode } from '../utils/tree-utils';
 
@@ -14,9 +7,6 @@ interface TreeNodeProps {
   node: TreeNodeType;
   treeData: TreeNodeType[];
   setTreeData: React.Dispatch<React.SetStateAction<TreeNodeType[]>>;
-  dragState: DragState;
-  setDragState: React.Dispatch<React.SetStateAction<DragState>>;
-  dragCounter: React.MutableRefObject<number>;
   expandedNodes: Set<string>;
   toggleExpanded: (nodeId: string) => void;
   selectedSegment: string | null;
@@ -33,9 +23,6 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   node,
   treeData,
   setTreeData,
-  dragState,
-  setDragState,
-  dragCounter,
   expandedNodes,
   toggleExpanded,
   selectedSegment,
@@ -50,8 +37,6 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const isExpanded = expandedNodes.has(node.id);
   const hasChildren = node.children.length > 0;
-  const isDraggedOver = dragState.dragOverNode?.id === node.id;
-  const dropPosition = dragState.dropPosition;
 
   const handleTextAreaSelection = (e: React.MouseEvent<HTMLTextAreaElement> | React.KeyboardEvent<HTMLTextAreaElement>) => {
     const selection = handleTextSelection(node.id, e.target as HTMLTextAreaElement);
@@ -109,35 +94,20 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   }
 
   return (
-    <div key={node.id} className="select-none  ">
-      {/* Drop indicator for 'before' */}
-      {isDraggedOver && dropPosition === 'before' && (
-        <div className="h-0.5 bg-blue-500 rounded-full mb-1 mx-2"></div>
-      )}
-      
+    <div key={node.id} className="select-none">
       <div
         role="treeitem"
-        aria-selected={dragState.draggedNode?.id === node.id}
         aria-expanded={hasChildren ? isExpanded : undefined}
         tabIndex={0}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onDragOver={(e) => handleDragOver(e, node, setDragState)}
-        onDragEnter={(e) => handleDragEnter(e, dragCounter)}
-        onDragLeave={() => handleDragLeave(dragCounter, setDragState)}
-        onDrop={(e) => handleDrop(e, node, dragState, treeData, setTreeData, setDragState, dragCounter)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             toggleExpanded(node.id);
           }
         }}
-        className={`relative
-          flex items-start p-2 rounded-lg transition-all duration-200
-          ${isDraggedOver && dropPosition === 'inside' ? 'bg-blue-100 border-2 border-blue-300' : 'hover:bg-gray-50'}
-          ${dragState.draggedNode?.id === node.id ? 'opacity-50' : ''}
-          focus:outline-none focus:ring-2 focus:ring-blue-500
-        `}
+        className="relative flex items-start p-2 rounded-lg transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
         style={{ marginLeft: `${node.level * 24}px` }}
       >
         {/* Expand/Collapse button */}
@@ -159,22 +129,6 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             </svg>
           )}
         </button>
-
-        {/* Action buttons */}
-        <div className="flex items-center justify-center flex-col">
-          <button 
-            draggable
-            onDragStart={(e) => handleDragStart(e, node, setDragState, dragCounter)}
-            className="w-6 h-6 flex items-center justify-center mr-2 text-gray-400 hover:text-gray-600 cursor-move border-none bg-transparent"
-            aria-label="Drag to reorder"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-            </svg>
-          </button>
-
-         
-        </div>
 
         {/* Node content */}
         <div className="flex-1 min-w-0 relative">
@@ -221,11 +175,6 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         </div>
       </div>
 
-      {/* Drop indicator for 'after' */}
-      {isDraggedOver && dropPosition === 'after' && (
-        <div className="h-0.5 bg-blue-500 rounded-full mt-1 mx-2"></div>
-      )}
-
       {/* Render children */}
       {hasChildren && isExpanded && (
         <div className="ml-6">
@@ -235,9 +184,6 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
               node={child}
               treeData={treeData}
               setTreeData={setTreeData}
-              dragState={dragState}
-              setDragState={setDragState}
-              dragCounter={dragCounter}
               expandedNodes={expandedNodes}
               toggleExpanded={toggleExpanded}
               selectedSegment={selectedSegment}

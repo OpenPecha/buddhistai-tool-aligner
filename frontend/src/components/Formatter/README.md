@@ -1,6 +1,34 @@
 # Formatter Component
 
-A comprehensive text formatting and mapping component with tree structure visualization, drag-and-drop functionality, and text alignment capabilities.
+A comprehensive text formatting and mapping component with tree structure visualization, **horizontal drag-and-drop** functionality, and text alignment capabilities.
+
+## 🎯 Horizontal Drag & Drop
+
+**Key Concept:** All drag operations are HORIZONTAL - nodes can only move left/right within their hierarchical level.
+
+```
+Level 0:  [1]     [2]     [3]      ← Horizontal alignment
+           ↕       ↕       ↕
+Level 1:  [1.1]   [2.1]   [3.1]    ← One level right (indented)
+
+Operations:
+→  Indent right (nest into adjacent sibling)
+←  Outdent left (move to parent level)  
+↔️  Swap with adjacent sibling (same level)
+❌  No vertical jumps across levels
+```
+
+### Quick Rules
+- ✅ Swap Node 2 ↔️ Node 1 or 3 (adjacent only, same level)
+- ✅ Indent Node 2 → 1.1 (if adjacent)
+- ✅ Outdent Node 1.1 ← Node 2 (to parent level)
+- ❌ Node 3 CANNOT jump to position 1 (distance = 2, use 2 swaps)
+
+📚 **Documentation:**
+- [HORIZONTAL_DRAG_RULES.md](./HORIZONTAL_DRAG_RULES.md) - Complete horizontal drag guide
+- [HORIZONTAL_IMPLEMENTATION.md](./HORIZONTAL_IMPLEMENTATION.md) - Technical implementation
+- [TEST_CASES.md](./TEST_CASES.md) - Test scenarios
+- [VALIDATION_PROOF.md](./VALIDATION_PROOF.md) - Mathematical proof of constraints
 
 ## 📁 Structure
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorSelection } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
+import { Prec } from '@codemirror/state';
 import TextLoader from './TextLoader';
 import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
@@ -28,16 +29,15 @@ function TextEditor({
 }: TextEditorProps) {
   // Zustand store
   const {
-    sourceText, isSourceLoaded,
+    sourceText, 
+    isSourceLoaded,
     targetText, isTargetLoaded
   } = useTextSelectionStore();
 
   let currentText = editorType === 'source' ? sourceText : targetText;
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
-  
   // Local UI state
   if(!currentText || currentText === ''){
-    console.log('currentText is empty');
     currentText = root_text;
   }
   const [value, setValue] = React.useState(currentText);
@@ -87,8 +87,23 @@ function TextEditor({
     }
   }, [value, editorId, onSelectionChange, editorType, isSourceLoaded]);
 
-  // Only allow Enter key when isEditable is true
+  // Prevent backspace and delete keys
   const handleKeyDown = React.useCallback((event: React.KeyboardEvent) => {
+    // Block backspace and delete keys
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    
+    // Block Ctrl/Cmd + X (cut) and Ctrl/Cmd + D (delete line)
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'x' || event.key === 'X' || event.key === 'd' || event.key === 'D')) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    
+    // Only allow Enter key when isEditable is true
     if (isEditable && event.key !== 'Enter') {
       event.preventDefault();
       event.stopPropagation();
@@ -102,7 +117,30 @@ function TextEditor({
       onTextLoad(text, source);
     }
   }, [onTextLoad]);
+//  const showSourceSelectionRequired = editorType === 'target' && !isSourceLoaded;
+const showSourceSelectionRequired = false;
 
+  // Create extension to block deletion keys
+  const blockDeletionExtension = React.useMemo(() => {
+    return Prec.highest(keymap.of([
+      {
+        key: 'Backspace',
+        run: () => true, // Return true to prevent default behavior
+      },
+      {
+        key: 'Delete',
+        run: () => true,
+      },
+      {
+        key: 'Mod-x', // Ctrl+X or Cmd+X
+        run: () => true,
+      },
+      {
+        key: 'Mod-d', // Ctrl+D or Cmd+D
+        run: () => true,
+      },
+    ]));
+  }, []);
 
   return (
     <div className="relative h-full editor-container overflow-hidden">
@@ -140,12 +178,14 @@ function TextEditor({
           }}
           extensions={[
             // Enable line wrapping for text that exceeds container width
-            EditorView.lineWrapping
+            EditorView.lineWrapping,
+            // Block deletion keys at editor level
+            blockDeletionExtension
           ]}
         />
         
         {/* Overlay message for target editor when no source selection */}
-        {editorType === 'target' && !isSourceLoaded && (
+        {showSourceSelectionRequired && (
           <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center pointer-events-none">
             <div className="bg-white p-4 rounded-lg shadow-lg border-2 border-orange-200 text-center max-w-sm">
               <div className="text-orange-600 text-2xl mb-2">⚠️</div>

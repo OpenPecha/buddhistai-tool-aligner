@@ -6,23 +6,22 @@ import { CATALOGER_URL } from '../../../config';
 import { useSearchParams } from 'react-router-dom';
 
 interface TextSelectionPanelProps {
- readonly editorType: 'source' | 'target' | '';
+  readonly editorType: 'source' | 'target';
 }
 
-function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
+function TextSelectionPanel({ editorType }: TextSelectionPanelProps) {
   const {
-    sourceTextId, sourceInstanceId, isSourceLoaded,
+    sourceTextId, sourceInstanceId,
     targetTextId, targetInstanceId,
     setSourceText, setTargetText
   } = useTextSelectionStore();
-  
+
   // Get current editor's state from store
   const currentTextId = editorType === 'source' ? sourceTextId : targetTextId;
   const currentInstanceId = editorType === 'source' ? sourceInstanceId : targetInstanceId;
   
   const [selectedTextId, setSelectedTextId] = React.useState<string>(currentTextId || '');
   const [selectedInstanceId, setSelectedInstanceId] = React.useState<string | null>(currentInstanceId || null);
-  const [textInput, setTextInput] = React.useState<string>('');
   
   const [, setSearchParams] = useSearchParams();
   
@@ -30,9 +29,8 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
   const { data: availableTexts = [], isLoading: isLoadingTexts, error: textsError } = useTexts({ limit: 50 });
   const { data: instancesData, isLoading: isLoadingInstances, error: instancesError } = useTextInstances(selectedTextId);
   const { data: instanceData, isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
-
-  const availableInstances = instancesData || [];
-
+  const availableInstances = Array.isArray(instancesData) ? instancesData : [];
+  
   const handleChangeSearchParams = React.useCallback((updates: Record<string, string>) => {
     setSearchParams((prev) => {
       for (const [key, value] of Object.entries(updates)) {
@@ -57,49 +55,39 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
   }, []);
 
   // Handle instance selection from dropdown (second step)
-  const handleInstanceSelection = React.useCallback(async (instanceId: string) => {
+  const handleInstanceSelection = React.useCallback((instanceId: string) => {
     if (!instanceId || !selectedTextId) return;
     
-    try {
-      if (instanceData) {
-        const content = instanceData?.base || '';
-        if (editorType === 'source') {
-          setSourceText(selectedTextId, instanceId, content);
-          handleChangeSearchParams({
-            sTextId: selectedTextId,
-            sInstanceId: instanceId
-          });
-        } else {
-          setTargetText(selectedTextId, instanceId, content);
-          handleChangeSearchParams({
-            tTextId: selectedTextId,
-            tInstanceId: instanceId
-          });
-        }
-      }
-      
-      setSelectedInstanceId(instanceId);
-    } catch (error) {
-      console.error('Error fetching text content:', error);
-      alert('Failed to load text content. Please try again.');
-    }
-  }, [selectedTextId, instanceData, editorType, setSourceText, setTargetText, handleChangeSearchParams]);
+    // Just update the selected instance ID
+    // The useEffect below will handle setting the text content when instanceData is available
+    setSelectedInstanceId(instanceId);
+  }, [selectedTextId]);
 
-  // Handle manual text input
-  const handleTextInputSubmit = React.useCallback(() => {
-    if (textInput.trim()) {
-      // For manual input, we'll use a placeholder ID
-      const manualId = `manual-${Date.now()}`;
+  // Watch for instanceData changes and update text content when available
+  React.useEffect(() => {
+    if (!instanceData || !selectedInstanceId || !selectedTextId) return;
+    
+    try {
+      const content = instanceData.content || '';
       
       if (editorType === 'source') {
-        setSourceText(manualId, manualId, textInput.trim());
-      } else {
-        setTargetText(manualId, manualId, textInput.trim());
+        setSourceText(selectedTextId, selectedInstanceId, content);
+        handleChangeSearchParams({
+          sTextId: selectedTextId,
+          sInstanceId: selectedInstanceId
+        });
+      } else if (editorType === 'target') {
+        setTargetText(selectedTextId, selectedInstanceId, content);
+        handleChangeSearchParams({
+          tTextId: selectedTextId,
+          tInstanceId: selectedInstanceId
+        });
       }
-      
-      setTextInput('');
+    } catch (error) {
+      console.error('Error setting text content:', error);
+      alert('Failed to load text content. Please try again.');
     }
-  }, [textInput, editorType, setSourceText, setTargetText]);
+  }, [instanceData, selectedInstanceId, selectedTextId, editorType, setSourceText, setTargetText, handleChangeSearchParams]);
 
   // Handle creating new text (redirect to cataloger)
   const handleCreateText = React.useCallback(() => {
@@ -108,39 +96,6 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
     window.open(selected, '_blank');
   }, [selectedTextId]);
 
-
-  const handleReset = React.useCallback(() => {
-    // setSelectedSourceInstanceId(null);
-    // setSelectedTargetInstanceId(null);
-  }, []);
-
-  if (editorType === '') {
-    const selectedsourceInstanceId = "asdfasd";
-    const selectedtargetInstanceId = "asdfasdasdfasdfasfd";
-    return (
-      <div className="bg-white border-b border-gray-200 p-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Source:</span>
-              <select className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1">
-                <option value={selectedsourceInstanceId}>{selectedsourceInstanceId}</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Target:</span>
-              <select className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1">
-                <option value={selectedtargetInstanceId}>{selectedtargetInstanceId}</option>
-              </select>
-            </div>
-          </div>
-          <button onClick={handleReset} className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">
-            Reset
-          </button>
-        </div>
-      </div>
-    );
-  }
   return (
     <div className="h-full flex flex-col bg-gray-50 border border-gray-200">
       {/* Header */}
@@ -164,7 +119,6 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
             id={`text-select-${editorType}`}
             value={selectedTextId}
             onChange={(e) => handleTextSelection(e.target.value)}
-            disabled={isLoadingTexts || (editorType === 'target' && !isSourceLoaded)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">
@@ -181,9 +135,14 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
               </option>
             ))}
           </select>
-          {(textsError || instancesError) && (
+          {textsError && (
             <p className="text-sm text-red-600">
-              {textsError ? 'Failed to load available texts: ' + textsError.message : 'Failed to load available instances: ' + instancesError.message}
+              Failed to load available texts: {textsError.message}
+            </p>
+          )}
+          {instancesError && (
+            <p className="text-sm text-red-600">
+              Failed to load available instances: {instancesError.message}
             </p>
           )}
         </div>
@@ -212,9 +171,9 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
                 </option>
                 {availableInstances.map((instance) => {
                   if (!instance) return null;
-                  const firstIncipitKey = instance?.incipit_title ? Object.keys(instance.incipit_title)[0] : null;
-                  const firstAltIncipitKey = instance?.alt_incipit_titles ? Object.keys(instance.alt_incipit_titles)[0] : null;
-                  const title = instance?.incipit_title?.[firstIncipitKey] || instance?.alt_incipit_titles?.[firstAltIncipitKey] || `Instance ${instance.id}`;
+                  const firstIncipitKey = instance?.incipit_title ? Object.keys(instance.incipit_title)[0] : undefined;
+                  const firstAltIncipitKey = instance?.alt_incipit_titles ? Object.keys(instance.alt_incipit_titles)[0] : undefined;
+                  const title = (firstIncipitKey && instance?.incipit_title?.[firstIncipitKey]) || (firstAltIncipitKey && instance?.alt_incipit_titles?.[firstAltIncipitKey]) || `Instance ${instance.id}`;
 
                   return (
                     <option key={instance.id} value={instance.id}>
@@ -241,7 +200,6 @@ function TextSelectionPanel({ editorType}: TextSelectionPanelProps) {
             )}
           </div>
         )}
-      
       </div>
     </div>
   );
