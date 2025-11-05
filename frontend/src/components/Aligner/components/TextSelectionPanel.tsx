@@ -1,9 +1,10 @@
 import React from 'react';
-import { useTexts, useInstance, useTextInstances } from '../../../hooks/useTexts';
+import { useTexts, useInstance, useTextInstances, useAnnotation } from '../../../hooks/useTexts';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { PlusCircle } from 'lucide-react';
 import { CATALOGER_URL } from '../../../config';
 import { useSearchParams } from 'react-router-dom';
+import { applySegmentation } from '../../../lib/annotation';
 
 interface TextSelectionPanelProps {
   readonly editorType: 'source' | 'target';
@@ -29,6 +30,12 @@ function TextSelectionPanel({ editorType }: TextSelectionPanelProps) {
   const { data: availableTexts = [], isLoading: isLoadingTexts, error: textsError } = useTexts({ limit: 50 });
   const { data: instancesData, isLoading: isLoadingInstances, error: instancesError } = useTextInstances(selectedTextId);
   const { data: instanceData, isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
+  
+  // Get segmentation annotations from the annotations object
+  const segmentationAnnotation = instanceData?.annotations?.filter((annotation: any)=>annotation.type==='segmentation') as Array<{annotation_id: string; type: string}> | undefined;
+  const segmentAnnotation = segmentationAnnotation?.[0];
+  
+  const {data: segmentAnnotationData, isLoading: isLoadingSegmentAnnotation, error: segmentAnnotationError} = useAnnotation(segmentAnnotation?.annotation_id ?? null);
   const availableInstances = Array.isArray(instancesData) ? instancesData : [];
   
   const handleChangeSearchParams = React.useCallback((updates: Record<string, string>) => {
@@ -63,13 +70,25 @@ function TextSelectionPanel({ editorType }: TextSelectionPanelProps) {
     setSelectedInstanceId(instanceId);
   }, [selectedTextId]);
 
-  // Watch for instanceData changes and update text content when available
+  // Watch for instanceData and segmentAnnotationData changes and update text content when available
   React.useEffect(() => {
     if (!instanceData || !selectedInstanceId || !selectedTextId) return;
     
+    // Don't process if we're still loading the annotation
+    if (segmentAnnotation && isLoadingSegmentAnnotation) return;
+    
     try {
-      const content = instanceData.content || '';
+      let content = instanceData.content || '';
       
+      // If we have segmentation annotation data, apply it to the content
+      if (segmentAnnotationData && Array.isArray(segmentAnnotationData)) {
+        console.log(content,segmentAnnotationData);
+        content = applySegmentation(content, segmentAnnotationData);
+      } else if (segmentAnnotationError) {
+        console.error('Error loading segmentation annotation:', segmentAnnotationError);
+      }
+      
+      // Set the text in the editor (either segmented or original)
       if (editorType === 'source') {
         setSourceText(selectedTextId, selectedInstanceId, content);
         handleChangeSearchParams({
@@ -87,7 +106,7 @@ function TextSelectionPanel({ editorType }: TextSelectionPanelProps) {
       console.error('Error setting text content:', error);
       alert('Failed to load text content. Please try again.');
     }
-  }, [instanceData, selectedInstanceId, selectedTextId, editorType, setSourceText, setTargetText, handleChangeSearchParams]);
+  }, [instanceData, segmentAnnotationData, selectedInstanceId, selectedTextId, editorType, setSourceText, setTargetText, handleChangeSearchParams, segmentAnnotation, isLoadingSegmentAnnotation, segmentAnnotationError]);
 
   // Handle creating new text (redirect to cataloger)
   const handleCreateText = React.useCallback(() => {

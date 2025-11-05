@@ -64,7 +64,7 @@ export const fetchInstance = async (id: string): Promise<OpenPechaTextInstance> 
 };
 
 export const fetchAnnotation = async (id: string): Promise<Annotations> => {
-  const response = await fetch(`${API_URL}/annotations/${id}`);
+  const response = await fetch(`${API_URL}/v2/annotations/${id}`);
   return response.json();
 };
 

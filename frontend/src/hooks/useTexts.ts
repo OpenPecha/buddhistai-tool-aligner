@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchTexts, fetchTextInstances, fetchInstance } from '../api/text';
+import { fetchTexts, fetchTextInstances, fetchInstance, fetchAnnotation } from '../api/text';
 import type { OpenPechaTextInstance } from '../types/text';
 
 // Query keys
