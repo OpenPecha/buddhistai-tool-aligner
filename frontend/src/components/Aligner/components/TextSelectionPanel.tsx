@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTexts, useInstance, useTextInstances, useAnnotation } from '../../../hooks/useTexts';
+import { useTexts, useInstance, useTextInstances, useAnnotation } from '../../../hooks/useTextData';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { PlusCircle } from 'lucide-react';
 import { CATALOGER_URL } from '../../../config';

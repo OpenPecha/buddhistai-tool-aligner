@@ -1,6 +1,5 @@
 import React from 'react';
 import type { TextMapping, TextSelection } from '../types';
-import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useEditorContext } from '../context';
 
 interface MappingSidebarProps {

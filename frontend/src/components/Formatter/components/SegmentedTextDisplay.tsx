@@ -68,8 +68,8 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
 
 
   return (
-    <div className="segmented-text-display">
-      <div className="segments-container">
+    <div className="segmented-text-display ">
+      <div className="segments-container mb-20">
         {segmentedText.map(({ segment, text }) => (
           <div key={segment.id} className="segment-wrapper">
             {/* Title input field - appears above the segment when active */}
