@@ -55,14 +55,41 @@ function Formatter() {
     setAvailableTitles(titles);
   }, [treeData]);
 
+  // Keep segmentedText synchronized with segmentAnnotations
+  useEffect(() => {
+    if (segmentAnnotations.length > 0 && baseText) {
+      const updatedSegmentedText = segmentAnnotations.map(segment => ({
+        segment,
+        text: baseText.slice(segment.start, segment.end)
+      }));
+      console.log('Syncing segmentedText with segmentAnnotations:', {
+        segmentCount: segmentAnnotations.length,
+        segmentsWithTitles: segmentAnnotations.filter(s => s.title).length,
+        titles: segmentAnnotations.filter(s => s.title).map(s => ({ id: s.id, title: s.title }))
+      });
+      setSegmentedText(updatedSegmentedText);
+    }
+  }, [segmentAnnotations, baseText]);
+
   // For legacy line-based view, use segmented text with newlines if segments exist, otherwise baseText
   const editorText = useMemo(() => {
     if (segmentAnnotations.length > 0 && baseText) {
       // Create text with newlines between segments
-      return segmentAnnotations
+      const generated = segmentAnnotations
         .map(segment => baseText.slice(segment.start, segment.end))
         .join('\n');
+      console.log('Generated editorText from segments:', {
+        segmentCount: segmentAnnotations.length,
+        baseTextLength: baseText.length,
+        generatedLength: generated.length,
+        preview: generated.substring(0, 100)
+      });
+      return generated;
     }
+    console.log('Using baseText or root_text:', {
+      baseTextLength: baseText.length,
+      usingRootText: !baseText
+    });
     return baseText || root_text;
   }, [segmentAnnotations, baseText]);
 
@@ -74,6 +101,12 @@ function Formatter() {
     segmentAnnotations: SegmentAnnotation[];
     segmentedText: Array<{segment: SegmentAnnotation, text: string}>;
   }) => {
+    console.log('handleTextLoad called with:', {
+      instanceId: data.instanceId,
+      baseTextLength: data.baseText.length,
+      segmentAnnotationsCount: data.segmentAnnotations.length,
+      segmentedTextCount: data.segmentedText.length
+    });
     setInstanceId(data.instanceId);
     setBaseText(data.baseText);
     setSegmentAnnotations(data.segmentAnnotations);
@@ -110,13 +143,21 @@ function Formatter() {
   const handleAssignTitleToSegments = useCallback((title: string, segmentIds?: string[]) => {
     const targetSegments = segmentIds || selectedSegments;
     
-    setSegmentAnnotations(prev => 
-      prev.map(segment => 
+    console.log('Assigning title to segments:', {
+      title,
+      targetSegments,
+      segmentCount: targetSegments.length
+    });
+    
+    setSegmentAnnotations(prev => {
+      const updated = prev.map(segment => 
         targetSegments.includes(segment.id)
           ? { ...segment, title }
           : segment
-      )
-    );
+      );
+      console.log('Updated segment annotations:', updated);
+      return updated;
+    });
     
     // Clear selection after assignment
     setSelectedSegments([]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTexts, useTextInstances, useInstance, useAnnotation } from '../../../hooks/useTextData';
 import { applySegmentation } from '../../../lib/annotation';
 import type { OpenPechaText, OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
@@ -87,13 +87,7 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   const { data: segmentationData, isLoading: isLoadingAnnotation, error: annotationError } = useAnnotation(segmentationAnnotationId || null);
 
   // Process and load the text when all data is ready
-  useEffect(() => {
-    if (instanceData && selectedInstanceId && !isProcessing) {
-      processAndLoadText();
-    }
-  }, [instanceData, segmentationData, selectedInstanceId]);
-
-  const processAndLoadText = async () => {
+  const processAndLoadText = useCallback(async () => {
     if (!instanceData || !selectedInstanceId) return;
 
     setIsProcessing(true);
@@ -162,7 +156,27 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [instanceData, segmentationData, selectedInstanceId, onTextLoad]);
+
+  useEffect(() => {
+    // Wait for all data to be ready before processing
+    // If there's a segmentationAnnotationId, wait for annotation to load
+    const isAnnotationReady = segmentationAnnotationId ? !isLoadingAnnotation : true;
+    
+    if (instanceData && selectedInstanceId && !isProcessing && isAnnotationReady) {
+      console.log('All data ready, processing text...', {
+        hasSegmentation: !!segmentationAnnotationId,
+        annotationLoaded: !!segmentationData,
+        isLoadingAnnotation
+      });
+      processAndLoadText();
+    } else if (instanceData && selectedInstanceId && segmentationAnnotationId && isLoadingAnnotation) {
+      console.log('Waiting for annotation to load...', {
+        segmentationAnnotationId,
+        isLoadingAnnotation
+      });
+    }
+  }, [instanceData, segmentationData, selectedInstanceId, isProcessing, processAndLoadText, segmentationAnnotationId, isLoadingAnnotation]);
 
   const handleTextSelect = (textId: string, textTitle?: string) => {
     setSelectedTextId(textId);
@@ -420,13 +434,42 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Segmentation:</span>
                 <span className="text-gray-900">
-                  {segmentationAnnotationId ? 'Available' : 'Not available'}
+                  {segmentationAnnotationId ? (
+                    isLoadingAnnotation ? (
+                      <span className="flex items-center gap-1">
+                        Loading...
+                        <svg className="animate-spin h-3 w-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </span>
+                    ) : 'Loaded'
+                  ) : 'Not available'}
                 </span>
               </div>
-              {segmentationData && Array.isArray(segmentationData) && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Segments:</span>
-                  <span className="text-gray-900">{segmentationData.length} segments</span>
+              {segmentationData && !isLoadingAnnotation && (
+                <>
+                  {Array.isArray(segmentationData) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Segments:</span>
+                      <span className="text-gray-900">{segmentationData.length} segments</span>
+                    </div>
+                  )}
+                  {segmentationData.annotation && Array.isArray(segmentationData.annotation) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Segments:</span>
+                      <span className="text-gray-900">{segmentationData.annotation.length} segments</span>
+                    </div>
+                  )}
+                </>
+              )}
+              {isProcessing && (
+                <div className="flex items-center justify-center gap-2 text-sm text-blue-600 pt-2 border-t border-blue-200">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing text with annotations...
                 </div>
               )}
             </div>

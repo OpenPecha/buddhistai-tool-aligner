@@ -74,7 +74,6 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
           <div key={segment.id} className="segment-wrapper">
             {/* Title input field - appears above the segment when active */}
             {showingTitleInput === segment.id && (
-              <div className="title-input-container">
                 <div className="title-input-wrapper">
                   <input
                     type="text"
@@ -104,7 +103,6 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
                       ✕
                     </button>
                   </div>
-                </div>
               </div>
             )}
 
