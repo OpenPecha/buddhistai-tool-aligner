@@ -1,30 +1,50 @@
 import { root_text } from '../../data/text.ts';
 import { useTreeState } from './hooks/useTreeState';
 import { SimpleTextDisplay } from './components/SimpleTextDisplay';
+import SegmentedTextDisplay from './components/SegmentedTextDisplay';
 import { TableOfContents } from './components/TableOfContents';
-import { EditorToolbar } from './components/EditorToolbar';
+import SegmentTOC from './components/SegmentTOC';
 import { exportTreeAsJSON, exportTreeAsText } from './utils/export-utils';
 import {
   getHierarchicalNumber,
   getNodeMappingCount,
 } from './utils/formatter-utils';
+import {
+  createTitleNode,
+  getAllTitleNodes,
+  createSegmentsFromRange,
+} from './utils/tree-utils';
 import { LAYOUT_CONFIG } from './constants/formatter-constants';
-import type { TreeNode } from './types';
-import { useState } from 'react';
+import type { TreeNode, TextRange, TitleCreationData, SegmentAnnotation } from './types';
+import { useState, useEffect, useCallback } from 'react';
 import SubmitFormat from './components/SubmitFormat.tsx';
 
 function Formatter() {
   const [showTOC, setShowTOC] = useState(true);
   const [editorText] = useState(root_text);
-  const [headingMap, setHeadingMap] = useState<Map<number, number>>(new Map());
+  const [headingMap] = useState<Map<number, number>>(new Map());
   const [currentLine, setCurrentLine] = useState(1);
-  const [currentLineText, setCurrentLineText] = useState('');
+  const [useSegmentView, setUseSegmentView] = useState(true); // Toggle between views
+  
+  // Text range selection state
+  const [selectedRange, setSelectedRange] = useState<TextRange | null>(null);
+  const [availableTitles, setAvailableTitles] = useState<TreeNode[]>([]);
+  
+  // Segment annotation state
+  const [baseText] = useState(root_text); // The unsegmented base text
+  const [segmentAnnotations, setSegmentAnnotations] = useState<SegmentAnnotation[]>([
+    // Example segment annotations - replace with actual data
+    { id: 'seg1', start: 0, end: 100 },
+    { id: 'seg2', start: 100, end: 250 },
+    { id: 'seg3', start: 250, end: 400 },
+  ]);
+  const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [segmentedText, setSegmentedText] = useState<Array<{segment: SegmentAnnotation, text: string}>>([]);
   
   const {
     treeData,
     setTreeData,
     expandedNodes,
-    setExpandedNodes,
     selectedSegment,
     setSelectedSegment,
     segmentMappings,
@@ -33,16 +53,137 @@ function Formatter() {
     collapseAll,
   } = useTreeState([]); // Start with empty tree
 
+  // Keep availableTitles synchronized with treeData
+  useEffect(() => {
+    const titles = getAllTitleNodes(treeData);
+    setAvailableTitles(titles);
+  }, [treeData]);
+
+  // Apply segmentation annotations to base text
+  useEffect(() => {
+    const applySegmentation = () => {
+      const segmented = segmentAnnotations.map(segment => ({
+        segment,
+        text: baseText.slice(segment.start, segment.end)
+      }));
+      setSegmentedText(segmented);
+    };
+    
+    applySegmentation();
+  }, [baseText, segmentAnnotations]);
+
   // Handle line click from SimpleTextDisplay
-  const handleLineClick = (lineNumber: number, lineText: string) => {
+  const handleLineClick = useCallback((lineNumber: number, _lineText: string, isShiftClick?: boolean) => {
     setCurrentLine(lineNumber);
-    setCurrentLineText(lineText);
-  };
+    
+    // Handle range selection with shift-click
+    if (isShiftClick && selectedRange) {
+      const startLine = Math.min(selectedRange.startLine, lineNumber);
+      const endLine = Math.max(selectedRange.endLine, lineNumber);
+      const selectedLines = Array.from({ length: endLine - startLine + 1 }, (_, i) => startLine + i);
+      
+      setSelectedRange({
+        startLine,
+        endLine,
+        selectedLines
+      });
+    } else if (isShiftClick && currentLine !== lineNumber) {
+      // Start new range selection
+      const startLine = Math.min(currentLine, lineNumber);
+      const endLine = Math.max(currentLine, lineNumber);
+      const selectedLines = Array.from({ length: endLine - startLine + 1 }, (_, i) => startLine + i);
+      
+      setSelectedRange({
+        startLine,
+        endLine,
+        selectedLines
+      });
+    } else {
+      // Single line selection - clear range
+      setSelectedRange(null);
+    }
+  }, [selectedRange, currentLine]);
 
   // Handle segment click
-  const handleSegmentClick = (nodeId: string) => {
+  const handleSegmentClick = useCallback((nodeId: string) => {
     setSelectedSegment(nodeId);
-  };
+  }, [setSelectedSegment]);
+
+  // Handle title creation
+  const handleCreateTitle = useCallback((titleData: TitleCreationData) => {
+    const newTitleNode = createTitleNode(titleData);
+    
+    // If there's a selected range, create segments from it and assign to the title
+    if (selectedRange && titleData.selectedRange) {
+      const textLines = editorText.split('\n');
+      let updatedTree = [...treeData, newTitleNode];
+      
+      // Create segments from the selected range and assign to title
+      updatedTree = createSegmentsFromRange(
+        updatedTree,
+        newTitleNode.id,
+        selectedRange.startLine,
+        selectedRange.endLine,
+        textLines
+      );
+      
+      setTreeData(updatedTree);
+    } else {
+      // Just add the title node
+      setTreeData(prev => [...prev, newTitleNode]);
+    }
+    
+    // Update available titles
+    setAvailableTitles(prev => [...prev, newTitleNode]);
+    
+    // Clear selection after creating title
+    setSelectedRange(null);
+  }, [selectedRange, editorText, treeData, setTreeData, setAvailableTitles]);
+
+  // Handle title creation from line button
+  const handleCreateTitleFromLine = useCallback((lineNumber: number, titleText: string) => {
+    const titleData: TitleCreationData = {
+      title: titleText,
+      selectedRange: {
+        startLine: lineNumber,
+        endLine: lineNumber,
+        selectedLines: [lineNumber]
+      }
+    };
+    handleCreateTitle(titleData);
+  }, [handleCreateTitle]);
+
+  // Handle segment selection
+  const handleSegmentSelect = useCallback((segmentId: string, isShiftClick?: boolean) => {
+    if (isShiftClick) {
+      // Toggle selection for multiple segments
+      setSelectedSegments(prev => 
+        prev.includes(segmentId) 
+          ? prev.filter(id => id !== segmentId)
+          : [...prev, segmentId]
+      );
+    } else {
+      // Single selection
+      setSelectedSegments([segmentId]);
+    }
+  }, []);
+
+  // Handle title assignment to segments
+  const handleAssignTitleToSegments = useCallback((title: string, segmentIds?: string[]) => {
+    const targetSegments = segmentIds || selectedSegments;
+    
+    setSegmentAnnotations(prev => 
+      prev.map(segment => 
+        targetSegments.includes(segment.id)
+          ? { ...segment, title }
+          : segment
+      )
+    );
+    
+    // Clear selection after assignment
+    setSelectedSegments([]);
+  }, [selectedSegments]);
+
 
   // Export functionality
   const handleExportSelect = (exportType: 'text' | 'json') => {
@@ -53,95 +194,6 @@ function Formatter() {
     }
   };
 
-  // Handle applying heading from toolbar
-  const handleApplyHeading = (level: number) => {
-    // Update heading map
-    const newHeadingMap = new Map(headingMap);
-    newHeadingMap.set(currentLine, level - 1); // Store as 0-5 for internal use
-    setHeadingMap(newHeadingMap);
-    
-    const newTree = [...treeData];
-    
-    // Generate a unique ID for the node
-    const nodeId = `line-${currentLine}-${Date.now()}`;
-    
-    // Create a new node
-    const newNode: TreeNode = {
-      id: nodeId,
-      hierarchicalNumber: '',
-      text: currentLineText.trim(),
-      level: level - 1, // Convert H1-H6 to level 0-5
-      type: 'heading',
-      lineNumber: currentLine,
-      textLength: currentLineText.trim().length,
-      mappingCount: 0,
-      mappings: {
-        asSource: [],
-        asTarget: [],
-      },
-      children: [],
-    };
-    
-    // Insert node in correct position based on line number and hierarchy
-    const insertNodeByLineNumber = (nodes: TreeNode[], node: TreeNode): TreeNode[] => {
-      if (nodes.length === 0) {
-        return [node];
-      }
-      
-      const result: TreeNode[] = [];
-      let inserted = false;
-      
-      for (let i = 0; i < nodes.length; i++) {
-        const currentNode = nodes[i];
-        
-        // If new node should come before current node (by line number)
-        if (!inserted && node.lineNumber! < (currentNode.lineNumber || Infinity)) {
-          // Check if it should be a child of previous node based on level
-          if (i > 0 && node.level > nodes[i - 1].level) {
-            // Insert as child of previous node
-            const prevNode = result.at(-1)!;
-            result[result.length - 1] = {
-              ...prevNode,
-              children: insertNodeByLineNumber(prevNode.children, node)
-            };
-            inserted = true;
-          } else {
-            // Insert as sibling before current node
-            result.push(node);
-            inserted = true;
-          }
-        }
-        
-        result.push(currentNode);
-      }
-      
-      // If not inserted yet, add at the end
-      if (!inserted) {
-        const lastNode = result.at(-1)!;
-        if (node.level > lastNode.level) {
-          // Add as child of last node
-          result[result.length - 1] = {
-            ...lastNode,
-            children: insertNodeByLineNumber(lastNode.children, node)
-          };
-        } else {
-          // Add as sibling at end
-          result.push(node);
-        }
-      }
-      
-      return result;
-    };
-    
-    const updatedTree = insertNodeByLineNumber(newTree, newNode);
-    setTreeData(updatedTree);
-    
-    // Select the new node
-    setSelectedSegment(nodeId);
-    
-    // Expand the node's parent if it has one
-    setExpandedNodes(new Set([...expandedNodes, nodeId]));
-  };
 
 
 
@@ -167,37 +219,70 @@ function Formatter() {
         {/* TOC Sidebar */}
         {showTOC && (
           <div className="w-80 shrink-0 overflow-hidden">
-            <TableOfContents
-              treeData={treeData}
-              selectedSegment={selectedSegment}
-              onSegmentClick={handleSegmentClick}
-              getHierarchicalNumber={(nodeId: string) => getHierarchicalNumber(nodeId, treeData)}
-              getMappingCount={(nodeId: string) => getNodeMappingCount(nodeId, segmentMappings, treeData)}
-              expandedNodes={expandedNodes}
-              toggleExpanded={toggleExpanded}
-              onClose={() => setShowTOC(false)}
-              expandAll={expandAll}
-              collapseAll={collapseAll}
-            />
+            {useSegmentView ? (
+              <SegmentTOC
+                segmentAnnotations={segmentAnnotations}
+                onClose={() => setShowTOC(false)}
+              />
+            ) : (
+              <TableOfContents
+                treeData={treeData}
+                selectedSegment={selectedSegment}
+                onSegmentClick={handleSegmentClick}
+                getHierarchicalNumber={(nodeId: string) => getHierarchicalNumber(nodeId, treeData)}
+                getMappingCount={(nodeId: string) => getNodeMappingCount(nodeId, segmentMappings, treeData)}
+                expandedNodes={expandedNodes}
+                toggleExpanded={toggleExpanded}
+                onClose={() => setShowTOC(false)}
+                expandAll={expandAll}
+                collapseAll={collapseAll}
+                onCreateTitle={handleCreateTitle}
+              />
+            )}
           </div>
         )}
 
         {/* Editor Section */}
         <div className="flex-1 flex flex-col">
-          {/* Editor Toolbar */}
-          <EditorToolbar
-            currentLine={currentLine}
-            currentLineText={currentLineText}
-            onApply={handleApplyHeading}
-          />
+          {/* View Toggle */}
+          <div className="p-4 border-b border-gray-200 bg-white">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={useSegmentView}
+                  onChange={(e) => setUseSegmentView(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Use Segment View
+                </span>
+              </label>
+              <span className="text-xs text-gray-500">
+                {useSegmentView ? 'Showing segments with annotations' : 'Showing line-based view'}
+              </span>
+            </div>
+          </div>
           
           {/* Text Display */}
           <div className={`${LAYOUT_CONFIG.TREE_CONTAINER_CLASSES} flex-1`}>
-            <SimpleTextDisplay
-              text={editorText}
-              headingMap={headingMap}
-              onLineClick={handleLineClick}
-            />
+            {useSegmentView ? (
+              <SegmentedTextDisplay
+                segmentedText={segmentedText}
+                selectedSegments={selectedSegments}
+                onSegmentSelect={handleSegmentSelect}
+                onAssignTitle={handleAssignTitleToSegments}
+              />
+            ) : (
+              <SimpleTextDisplay
+                text={editorText}
+                headingMap={headingMap}
+                onLineClick={handleLineClick}
+                selectedRange={selectedRange}
+                titleNodes={availableTitles}
+                onCreateTitle={handleCreateTitleFromLine}
+              />
+            )}
           </div>
         </div>
 
@@ -232,11 +317,13 @@ function Formatter() {
               </button>
             </div>
 
-            {/* Submit Section */}
-            <div className="space-y-2 pt-3 border-t border-gray-200">
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Submit</h4>
-              <SubmitFormat treeData={treeData} segmentMappings={segmentMappings} />
-            </div>
+          {/* Submit Section */}
+          <div className="space-y-2 pt-3 border-t border-gray-200">
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Submit</h4>
+            <SubmitFormat 
+              segmentAnnotations={segmentAnnotations}
+            />
+          </div>
           </div>
         </div>
       </div>

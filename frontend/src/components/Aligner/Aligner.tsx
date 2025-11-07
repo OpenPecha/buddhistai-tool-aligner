@@ -82,6 +82,7 @@ function AlignerContent() {
                  editorType="source"
                  onSelectionChange={selectionHandler}
                  mappings={mappings}
+                 onTextLoad={() => {}} // Enable file upload for source editor
                />
             </Panel>
             
@@ -103,6 +104,7 @@ function AlignerContent() {
                  editorType="target"
                  onSelectionChange={selectionHandler}
                  mappings={mappings}
+                 onTextLoad={() => {}} // Enable file upload for target editor
                />
             </Panel>
             

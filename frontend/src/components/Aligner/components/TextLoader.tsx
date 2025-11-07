@@ -28,6 +28,9 @@ const TextLoader: React.FC<TextLoaderProps> = ({ onTextLoad, isLoading = false }
     if (file && file.type === 'text/plain') {
       try {
         const text = await file.text();
+        // For file uploads, we want to preserve the existing line structure
+        // by treating each line as a segment, so we pass the text as-is
+        // The segmentation will be handled in the text processing
         onTextLoad(text, 'file');
         // Reset file input
         if (fileInputRef.current) {

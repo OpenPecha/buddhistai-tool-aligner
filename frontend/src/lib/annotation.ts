@@ -58,3 +58,31 @@ export function applySegmentation(text: string, segmentations: Array<{span: {sta
 
     return result;
 }
+
+/**
+ * Generate segmentation annotations from text file content using newlines as segment boundaries
+ * @param text - Raw text content from uploaded file
+ * @returns Array of segmentation annotations based on line breaks
+ */
+export function generateFileSegmentation(text: string): Array<{span: {start: number, end: number}}> {
+    const segments = [];
+    let pos = 0;
+    const lines = text.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Skip empty lines but still account for their position
+        if (line.trim().length > 0) {
+            segments.push({
+                span: {
+                    start: pos,
+                    end: pos + line.length
+                }
+            });
+        }
+        // Move position past the line and newline character
+        pos += line.length + 1; // +1 for the newline character
+    }
+    
+    return segments;
+}

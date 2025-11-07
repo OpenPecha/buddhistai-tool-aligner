@@ -4,6 +4,7 @@ import type { SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import TextSelectionPanel from './TextSelectionPanel';
 import TextEditor from './TextEditor';
+import TextLoader from './TextLoader';
 
 interface EditorProps {
   readonly ref: React.RefObject<ReactCodeMirrorRef | null> | null;
@@ -30,7 +31,6 @@ function Editor({
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
   return (
     <div className="relative h-full editor-container overflow-hidden">
-    
       {isTextLoaded ? 
         <TextEditor
           ref={ref}
@@ -40,7 +40,22 @@ function Editor({
           onSelectionChange={onSelectionChange}
           mappings={mappings}
           onTextLoad={onTextLoad}
-        />:<TextSelectionPanel editorType={editorType} />}
+        /> : (
+          <div className="relative h-full">
+            <TextSelectionPanel editorType={editorType} />
+            {/* Add TextLoader to selection panel for file uploads */}
+            {onTextLoad && (
+              <div className="absolute top-2 right-2 z-20">
+                <TextLoader onTextLoad={(text: string, source: 'file' | 'api') => {
+                  // Handle file upload in selection panel
+                  if (source === 'file') {
+                    onTextLoad(text, source);
+                  }
+                }} />
+              </div>
+            )}
+          </div>
+        )}
     </div>
   );
 }

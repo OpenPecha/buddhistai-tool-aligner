@@ -12,6 +12,8 @@ export interface TreeNode {
     asTarget: any[];
   };
   children: TreeNode[];
+  title?: string; // Custom title field separate from text content
+  isTitle: boolean; // Flag to identify title nodes vs content nodes
 }
 
 export interface SearchResult {
@@ -55,4 +57,28 @@ export interface ImportData {
   };
   segments: TreeNode[];
   mappings: any[];
+}
+
+export interface TextRange {
+  startLine: number;
+  endLine: number;
+  selectedLines: number[];
+}
+
+export interface TitleCreationData {
+  title: string;
+  selectedRange?: TextRange;
+  targetSegments?: string[]; // Node IDs of segments to group under this title
+}
+
+export interface SegmentAnnotation {
+  id: string;
+  start: number;
+  end: number;
+  title?: string;
+}
+
+export interface TOCEntry {
+  title: string;
+  segmentation: SegmentAnnotation[];
 }

@@ -7,6 +7,7 @@ import TextLoader from './TextLoader';
 import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { root_text } from '../../../data/text';
+import { generateFileSegmentation, applySegmentation } from '../../../lib/annotation';
 
 interface TextEditorProps {
   ref: React.RefObject<ReactCodeMirrorRef | null> | null;
@@ -31,7 +32,10 @@ function TextEditor({
   const {
     sourceText, 
     isSourceLoaded,
-    targetText, isTargetLoaded
+    targetText, 
+    isTargetLoaded,
+    setSourceTextFromFile,
+    setTargetTextFromFile
   } = useTextSelectionStore();
 
   let currentText = editorType === 'source' ? sourceText : targetText;
@@ -112,11 +116,30 @@ function TextEditor({
 
   // Handle text loading from file or API
   const handleTextLoad = React.useCallback((text: string, source: 'file' | 'api') => {
-    setValue(text);
-    if (onTextLoad) {
-      onTextLoad(text, source);
+    let processedText = text;
+    
+    // For file uploads, apply segmentation based on existing newlines
+    if (source === 'file') {
+      const fileSegmentation = generateFileSegmentation(text);
+      if (fileSegmentation.length > 0) {
+        processedText = applySegmentation(text, fileSegmentation);
+      }
+      
+      // Update the store with the processed text
+      if (editorType === 'source') {
+        setSourceTextFromFile(processedText);
+      } else if (editorType === 'target') {
+        setTargetTextFromFile(processedText);
+      }
+    } else {
+      // For API loads, just set the value directly
+      setValue(processedText);
     }
-  }, [onTextLoad]);
+    
+    if (onTextLoad) {
+      onTextLoad(processedText, source);
+    }
+  }, [onTextLoad, editorType, setSourceTextFromFile, setTargetTextFromFile]);
 //  const showSourceSelectionRequired = editorType === 'target' && !isSourceLoaded;
 const showSourceSelectionRequired = false;
 
@@ -144,8 +167,8 @@ const showSourceSelectionRequired = false;
 
   return (
     <div className="relative h-full editor-container overflow-hidden">
-      {/* Text Loader for Target Editor */}
-      {editorType === 'target' && onTextLoad && (
+      {/* Text Loader for both Source and Target Editors */}
+      {onTextLoad && (
         <TextLoader onTextLoad={handleTextLoad} />
       )}
 

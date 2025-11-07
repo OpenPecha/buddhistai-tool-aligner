@@ -90,13 +90,13 @@ function TextSelectionPanel({ editorType }: TextSelectionPanelProps) {
       
       // Set the text in the editor (either segmented or original)
       if (editorType === 'source') {
-        setSourceText(selectedTextId, selectedInstanceId, content);
+        setSourceText(selectedTextId, selectedInstanceId, content, 'database');
         handleChangeSearchParams({
           sTextId: selectedTextId,
           sInstanceId: selectedInstanceId
         });
       } else if (editorType === 'target') {
-        setTargetText(selectedTextId, selectedInstanceId, content);
+        setTargetText(selectedTextId, selectedInstanceId, content, 'database');
         handleChangeSearchParams({
           tTextId: selectedTextId,
           tInstanceId: selectedInstanceId

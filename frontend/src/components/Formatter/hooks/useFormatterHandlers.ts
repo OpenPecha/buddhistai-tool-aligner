@@ -99,6 +99,7 @@ export const useFormatterHandlers = ({
         asTarget: [],
       },
       children: [],
+      isTitle: false,
     };
 
     let newTree = addChildToNode(treeData, parentId, newNode);
@@ -144,6 +145,7 @@ export const useFormatterHandlers = ({
         asTarget: [],
       },
       children: [],
+      isTitle: false,
     };
     
     setTreeData(prev => [...prev, newNode]);

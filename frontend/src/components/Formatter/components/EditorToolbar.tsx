@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
+import type { TextRange, TreeNode } from '../types';
 
 interface EditorToolbarProps {
   currentLine: number;
   currentLineText: string;
   onApply: (level: number) => void;
+  selectedRange?: TextRange | null;
+  availableTitles?: TreeNode[];
+  onAssignToTitle?: (titleId: string, segmentIds: string[]) => void;
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   currentLine,
   currentLineText,
   onApply,
+  selectedRange,
+  availableTitles = [],
+  onAssignToTitle,
 }) => {
   const [selectedLevel, setSelectedLevel] = useState(1);
 
@@ -23,14 +30,29 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     setSelectedLevel(Number(e.target.value));
   };
 
+  const handleAssignToTitle = (titleId: string) => {
+    if (onAssignToTitle) {
+      // Use the selected range to create segments under the title
+      const segmentIds = selectedRange 
+        ? selectedRange.selectedLines.map(line => `line-${line}`)
+        : [`line-${currentLine}`];
+      onAssignToTitle(titleId, segmentIds);
+    }
+  };
+
   return (
     <div className="bg-white border-b border-gray-200 p-3">
-      <div className="flex items-center gap-4">
-        {/* Line Info */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Selection Info */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-600 uppercase">Line:</span>
+          <span className="text-xs font-semibold text-gray-600 uppercase">
+            {selectedRange ? 'Range:' : 'Line:'}
+          </span>
           <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm font-mono">
-            {currentLine}
+            {selectedRange 
+              ? `${selectedRange.startLine}-${selectedRange.endLine} (${selectedRange.selectedLines.length} lines)`
+              : currentLine
+            }
           </span>
         </div>
 
@@ -63,7 +85,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           </select>
         </div>
 
-        {/* Apply Button */}
+        {/* Apply Heading Button */}
         <button
           onClick={handleApplyHeading}
           disabled={!currentLineText.trim()}
@@ -72,8 +94,32 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
-          Apply
+          Apply Heading
         </button>
+
+        {/* Available Titles for Grouping */}
+        {availableTitles.length > 0 && selectedRange && (
+          <>
+            <div className="h-6 w-px bg-gray-300"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-600 uppercase">
+                Group under title:
+              </span>
+              <div className="flex gap-1 flex-wrap">
+                {availableTitles.map((title) => (
+                  <button
+                    key={title.id}
+                    onClick={() => handleAssignToTitle(title.id)}
+                    className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-sm font-medium transition-colors border border-amber-300"
+                    title={`Group selected lines under "${title.title || title.text}"`}
+                  >
+                    {title.title || title.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
