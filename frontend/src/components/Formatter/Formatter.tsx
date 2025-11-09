@@ -17,10 +17,16 @@ import {
 } from './utils/tree-utils';
 import type { TreeNode, TextRange, TitleCreationData, SegmentAnnotation } from './types';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useInstance, useAnnotation } from '../../hooks/useTextData';
+import { applySegmentation } from '../../lib/annotation';
+import type { SegmentationAnnotation as APISegmentationAnnotation } from '../../types/text';
 import SubmitFormat from './components/SubmitFormat.tsx';
 import './Formatter.css';
 
 function Formatter() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [showTOC, setShowTOC] = useState(true);
   const [headingMap] = useState<Map<number, number>>(new Map());
   const [currentLine, setCurrentLine] = useState(1);
@@ -36,6 +42,30 @@ function Formatter() {
   const [segmentAnnotations, setSegmentAnnotations] = useState<SegmentAnnotation[]>([]);
   const [segmentedText, setSegmentedText] = useState<Array<{segment: SegmentAnnotation, text: string}>>([]);
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [hasExistingSegmentation, setHasExistingSegmentation] = useState<boolean>(false);
+  
+  // Get instance ID from URL parameter
+  const urlInstanceId = searchParams.get('I_id');
+  
+  // Fetch instance data if URL parameter is provided
+  const { data: urlInstanceData, isLoading: isLoadingUrlInstance, isSuccess: isUrlInstanceSuccess } = useInstance(urlInstanceId);
+  
+  // Get segmentation annotation ID from the URL instance
+  const urlSegmentationAnnotationId = urlInstanceData?.annotations && Array.isArray(urlInstanceData.annotations) 
+    ? urlInstanceData.annotations.find((annotation: any) => annotation.type === 'segmentation')?.annotation_id
+    : undefined;
+  
+  // Determine if we've checked for segmentation annotation
+  const hasCheckedForSegmentation = isUrlInstanceSuccess && urlInstanceData;
+  
+  // Fetch segmentation annotation for URL instance
+  const { data: urlSegmentationData, isLoading: isLoadingUrlSegmentation, isSuccess: isUrlSegmentationSuccess } = useAnnotation(urlSegmentationAnnotationId || null);
+  
+  // Determine if we're ready to load (either segmentation loaded or no segmentation exists)
+  const isReadyToLoad = hasCheckedForSegmentation && (
+    !urlSegmentationAnnotationId || // No segmentation annotation
+    (urlSegmentationAnnotationId && isUrlSegmentationSuccess) // Segmentation loaded
+  );
   
   const {
     treeData,
@@ -112,7 +142,82 @@ function Formatter() {
     setSegmentAnnotations(data.segmentAnnotations);
     setSegmentedText(data.segmentedText);
     setSelectedSegments([]);
+    setHasExistingSegmentation(data.segmentAnnotations.length > 0);
   }, []);
+
+  // Auto-load instance from URL parameter if provided
+  useEffect(() => {
+    // Don't load if:
+    // - No URL instance ID
+    // - Already loaded an instance
+    // - Not ready to load (still fetching data)
+    if (!urlInstanceId || instanceId || !isReadyToLoad) return;
+    
+    console.log('Auto-loading instance from URL:', urlInstanceId, {
+      hasSegmentation: !!urlSegmentationAnnotationId,
+      segmentationLoaded: !!urlSegmentationData
+    });
+    
+    const loadUrlInstance = async () => {
+      try {
+        let content = urlInstanceData.content || '';
+        const baseText = content;
+        let segmentAnnotations: SegmentAnnotation[] = [];
+        
+        // Apply segmentation if annotation data exists
+        if (urlSegmentationData) {
+          try {
+            // Handle different annotation data structures
+            let annotationArray: APISegmentationAnnotation[] = [];
+            
+            if (Array.isArray(urlSegmentationData)) {
+              annotationArray = urlSegmentationData;
+            } else if (urlSegmentationData.annotation && Array.isArray(urlSegmentationData.annotation)) {
+              annotationArray = urlSegmentationData.annotation as APISegmentationAnnotation[];
+            } else {
+              console.warn('Unexpected segmentation data structure:', urlSegmentationData);
+            }
+            
+            if (annotationArray.length > 0) {
+              console.log('Processing annotations from URL:', annotationArray);
+              
+              // Apply segmentation to content
+              content = applySegmentation(baseText, annotationArray);
+              
+              // Convert to formatter-compatible segments
+              segmentAnnotations = annotationArray.map((seg: APISegmentationAnnotation, index: number) => ({
+                id: seg.id || `seg_${index + 1}`,
+                start: seg.span?.start || 0,
+                end: seg.span?.end || 0,
+              }));
+            }
+          } catch (segError) {
+            console.warn('Error applying segmentation:', segError);
+          }
+        }
+        
+        // Create segmented text array
+        const segmentedText = segmentAnnotations.map(segment => ({
+          segment,
+          text: baseText.slice(segment.start, segment.end)
+        }));
+        
+        // Load the data
+        setInstanceId(urlInstanceId);
+        setBaseText(baseText);
+        setSegmentAnnotations(segmentAnnotations);
+        setSegmentedText(segmentedText);
+        setSelectedSegments([]);
+        setHasExistingSegmentation(segmentAnnotations.length > 0);
+        
+        console.log('Auto-loaded instance from URL successfully');
+      } catch (error) {
+        console.error('Error auto-loading instance from URL:', error);
+      }
+    };
+    
+    loadUrlInstance();
+  }, [urlInstanceId, urlInstanceData, urlSegmentationData, urlSegmentationAnnotationId, isReadyToLoad, instanceId]);
 
   // Handle changing text (go back to selection)
   const handleChangeText = useCallback(() => {
@@ -121,8 +226,14 @@ function Formatter() {
     setSegmentAnnotations([]);
     setSegmentedText([]);
     setSelectedSegments([]);
+    setHasExistingSegmentation(false);
     setTreeData([]); // Clear legacy tree data
-  }, [setTreeData]);
+    
+    // Clear URL parameter if it exists
+    if (searchParams.has('I_id')) {
+      navigate('/formatter', { replace: true });
+    }
+  }, [setTreeData, searchParams, navigate]);
 
   // Handle segment selection
   const handleSegmentSelect = useCallback((segmentId: string, isShiftClick?: boolean) => {
@@ -351,7 +462,18 @@ function Formatter() {
           
           {/* Text Display */}
           <div className="flex-1 overflow-hidden">
-            {instanceId === null ? (
+            {urlInstanceId && !instanceId && !isReadyToLoad ? (
+              /* Show loading state when auto-loading from URL */
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-gray-600">Loading instance from URL...</p>
+                  <p className="text-sm text-gray-500 mt-2">Instance ID: {urlInstanceId}</p>
+                  {isLoadingUrlInstance && <p className="text-xs text-gray-400 mt-1">Fetching instance data...</p>}
+                  {!isLoadingUrlInstance && isLoadingUrlSegmentation && <p className="text-xs text-gray-400 mt-1">Loading segmentation annotations...</p>}
+                </div>
+              </div>
+            ) : instanceId === null ? (
               /* Show integrated text selector when no instance is loaded */
               <div className="integrated-text-selector">
                 <TextInstanceSelector
@@ -422,6 +544,7 @@ function Formatter() {
               <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Submit</h4>
               <SubmitFormat 
                 segmentAnnotations={segmentAnnotations}
+                hasExistingSegmentation={hasExistingSegmentation}
               />
             </div>
             </div>
