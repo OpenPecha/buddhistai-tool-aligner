@@ -14,6 +14,7 @@ interface EditorProps {
   readonly onSelectionChange?: SelectionHandler;
   readonly mappings?: TextMapping[];
   readonly onTextLoad?: (text: string, source: 'file' | 'api') => void;
+  readonly showContentOnlyWhenBothLoaded?: boolean;
 }
 
 function Editor({
@@ -23,15 +24,20 @@ function Editor({
   editorType,
   onSelectionChange,
   mappings = [],
-  onTextLoad
+  onTextLoad,
+  showContentOnlyWhenBothLoaded = false
 }: EditorProps) {
   // Zustand store
   const { isSourceLoaded, isTargetLoaded } = useTextSelectionStore();
   
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
+  const bothTextsLoaded = isSourceLoaded && isTargetLoaded;
+  
+  // Determine whether to show content based on the new prop
+  const shouldShowContent = showContentOnlyWhenBothLoaded ? bothTextsLoaded : isTextLoaded;
   return (
     <div className="relative h-full editor-container overflow-hidden">
-      {isTextLoaded ? 
+      {shouldShowContent ? 
         <TextEditor
           ref={ref}
           isEditable={isEditable}
@@ -44,7 +50,7 @@ function Editor({
           <div className="relative h-full">
             <TextSelectionPanel editorType={editorType} />
             {/* Add TextLoader to selection panel for file uploads */}
-            {onTextLoad && (
+            {/* {onTextLoad && (
               <div className="absolute top-2 right-2 z-20">
                 <TextLoader onTextLoad={(text: string, source: 'file' | 'api') => {
                   // Handle file upload in selection panel
@@ -53,7 +59,7 @@ function Editor({
                   }
                 }} />
               </div>
-            )}
+            )} */}
           </div>
         )}
     </div>

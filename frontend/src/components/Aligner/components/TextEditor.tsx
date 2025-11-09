@@ -168,9 +168,9 @@ const showSourceSelectionRequired = false;
   return (
     <div className="relative h-full editor-container overflow-hidden">
       {/* Text Loader for both Source and Target Editors */}
-      {onTextLoad && (
+      {/* {onTextLoad && (
         <TextLoader onTextLoad={handleTextLoad} />
-      )}
+      )} */}
 
       {/* Editor Container with proper width constraints */}
       <div className="w-full h-full box-border relative" style={{ fontFamily: 'var(--font-monlam)' }}>
