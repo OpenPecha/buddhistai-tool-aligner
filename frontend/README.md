@@ -2,6 +2,28 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Features
+
+### Formatter - Direct Instance Loading
+
+The Formatter page supports loading text instances directly via URL parameters, allowing you to skip the text selection step.
+
+**Usage:**
+```
+/formatter?I_id=<instance_id>
+```
+
+**Example:**
+```
+http://localhost:5173/formatter?I_id=I1234567890
+```
+
+When you navigate to the formatter with an `I_id` parameter:
+- The instance will be automatically fetched from the API
+- Segmentation annotations will be applied if available
+- The formatter will display the content immediately
+- You can still use the "Change Text" button to go back to text selection
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

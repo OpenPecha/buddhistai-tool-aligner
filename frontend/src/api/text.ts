@@ -1,6 +1,6 @@
 
 const API_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
-import type { OpenPechaText, OpenPechaTextInstance } from '../types/text';
+import type { OpenPechaText, OpenPechaTextInstance, Annotations } from '../types/text';
 
 // Real API function for Texts
 export const fetchTexts = async (params?: { limit?: number; offset?: number; language?: string; author?: string }): Promise<OpenPechaText[]> => {
@@ -53,13 +53,19 @@ export const createText = async (textData: {
   return await response.json();
 };
 
-export const fetchTextInstances = async (id: string): Promise<OpenPechaTextInstance> => {
+export const fetchTextInstances = async (id: string): Promise<OpenPechaTextInstance[]> => {
   const response = await fetch(`${API_URL}/text/${id}/instances`);
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data : [data];
 };
 
 export const fetchInstance = async (id: string): Promise<OpenPechaTextInstance> => {
-  const response = await fetch(`${API_URL}/text/instances/${id}`);
+  const response = await fetch(`${API_URL}/text/instances/${id}?annotations=true`);
+  return response.json();
+};
+
+export const fetchAnnotation = async (id: string): Promise<Annotations> => {
+  const response = await fetch(`${API_URL}/v2/annotations/${id}`);
   return response.json();
 };
 

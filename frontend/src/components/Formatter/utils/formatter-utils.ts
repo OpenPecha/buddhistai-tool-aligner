@@ -6,6 +6,24 @@ import { getMappingCount, getMappingsAsSource } from './search-utils';
  * Get hierarchical number for a node
  */
 export const getHierarchicalNumber = (nodeId: string, treeData: TreeNode[]): string => {
+  // First try to find the node and use its hierarchicalNumber property
+  const findNodeById = (nodes: TreeNode[]): TreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        return node;
+      }
+      const found = findNodeById(node.children);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const node = findNodeById(treeData);
+  if (node && node.hierarchicalNumber) {
+    return node.hierarchicalNumber;
+  }
+
+  // Fallback to generated hierarchical numbers for backward compatibility
   const numberMap = generateHierarchicalNumbers(treeData);
   return numberMap.get(nodeId) || nodeId;
 };
@@ -13,7 +31,27 @@ export const getHierarchicalNumber = (nodeId: string, treeData: TreeNode[]): str
 /**
  * Get mapping count for a specific node
  */
-export const getNodeMappingCount = (nodeId: string, segmentMappings: SegmentMapping[]): number => {
+export const getNodeMappingCount = (nodeId: string, segmentMappings: SegmentMapping[], treeData?: TreeNode[]): number => {
+  // First try to find the node and use its mappingCount property
+  if (treeData) {
+    const findNodeById = (nodes: TreeNode[]): TreeNode | null => {
+      for (const node of nodes) {
+        if (node.id === nodeId) {
+          return node;
+        }
+        const found = findNodeById(node.children);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const node = findNodeById(treeData);
+    if (node && typeof node.mappingCount === 'number') {
+      return node.mappingCount;
+    }
+  }
+
+  // Fallback to calculated mapping count for backward compatibility
   return getMappingCount(nodeId, segmentMappings);
 };
 

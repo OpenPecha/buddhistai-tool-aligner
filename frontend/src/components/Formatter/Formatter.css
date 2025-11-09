@@ -1,0 +1,31 @@
+/* Formatter Component Styles */
+
+/* Integrated text selector styling */
+.integrated-text-selector {
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+/* Ensure the text selector takes full height in integrated mode */
+.integrated-text-selector .text-instance-selector {
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  min-height: 500px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .integrated-text-selector {
+    padding: 0.5rem;
+  }
+  
+  .integrated-text-selector .text-instance-selector.integrated .selector-container {
+    padding: 1.5rem;
+  }
+}

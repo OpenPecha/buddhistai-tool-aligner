@@ -40,13 +40,15 @@ export interface AltTitle {
   export interface Annotations {
     [key: string]: unknown[];
   }
-  
+
+ 
+
   export interface OpenPechaTextInstance {
     alignment_sources: string[];
     alignment_targets: string[];
     alt_incipit_titles: string | null;
     annotations: Annotations;
-    base: string;
+    content: string;
     bdrc: string | null;
     colophon: string | null;
     copyright: string;

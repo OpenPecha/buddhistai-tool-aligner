@@ -1,8 +1,19 @@
 export interface TreeNode {
   id: string;
+  hierarchicalNumber: string;
   text: string;
-  children: TreeNode[];
   level: number;
+  type?: 'heading' | 'paragraph';
+  lineNumber?: number;
+  textLength: number;
+  mappingCount: number;
+  mappings: {
+    asSource: any[];
+    asTarget: any[];
+  };
+  children: TreeNode[];
+  title?: string; // Custom title field separate from text content
+  isTitle: boolean; // Flag to identify title nodes vs content nodes
 }
 
 export interface SearchResult {
@@ -26,12 +37,6 @@ export interface TextSelection {
   selectedText: string;
 }
 
-export interface DragState {
-  draggedNode: TreeNode | null;
-  dragOverNode: TreeNode | null;
-  dropPosition: 'before' | 'after' | 'inside' | null;
-}
-
 export interface ExportData {
   metadata: {
     totalNodes: number;
@@ -39,6 +44,41 @@ export interface ExportData {
     exportDate: string;
     version: string;
   };
-  segments: any[];
+  segments: TreeNode[];
   mappings: any[];
+}
+
+export interface ImportData {
+  metadata: {
+    totalNodes: number;
+    totalMappings: number;
+    exportDate: string;
+    version: string;
+  };
+  segments: TreeNode[];
+  mappings: any[];
+}
+
+export interface TextRange {
+  startLine: number;
+  endLine: number;
+  selectedLines: number[];
+}
+
+export interface TitleCreationData {
+  title: string;
+  selectedRange?: TextRange;
+  targetSegments?: string[]; // Node IDs of segments to group under this title
+}
+
+export interface SegmentAnnotation {
+  id: string;
+  start: number;
+  end: number;
+  title?: string;
+}
+
+export interface TOCEntry {
+  title: string;
+  segmentation: SegmentAnnotation[];
 }

@@ -1,15 +1,14 @@
-import { useState, useRef } from 'react';
-import type { TreeNode, DragState, SegmentMapping, TextSelection, SearchResult } from '../types';
+import { useState } from 'react';
+import type { TreeNode, SegmentMapping, TextSelection, SearchResult } from '../types';
 import { initializeTreeFromText, getAllNodeIds } from '../utils/tree-utils';
-import { resetDragState } from '../utils/drag-utils';
 
-export const useTreeState = (initialText: string) => {
+export const useTreeState = (initialData: string | TreeNode[]) => {
   // Tree data state
-  const [treeData, setTreeData] = useState<TreeNode[]>(() => initializeTreeFromText(initialText));
-  
-  // Drag and drop state
-  const [dragState, setDragState] = useState<DragState>(resetDragState());
-  const dragCounter = useRef(0);
+  const [treeData, setTreeData] = useState<TreeNode[]>(() => 
+    typeof initialData === 'string' 
+      ? initializeTreeFromText(initialData)
+      : initialData
+  );
   
   // UI state
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -53,9 +52,6 @@ export const useTreeState = (initialText: string) => {
     // State
     treeData,
     setTreeData,
-    dragState,
-    setDragState,
-    dragCounter,
     expandedNodes,
     setExpandedNodes,
     selectedSegment,

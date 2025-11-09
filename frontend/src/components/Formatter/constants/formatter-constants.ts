@@ -64,6 +64,6 @@ export const LAYOUT_CONFIG = {
   SELECTED_INFO_CLASSES: 'text-sm text-blue-600',
   TEXT_HIGHLIGHT_CLASSES: 'text-yellow-600',
   BUTTON_GROUP_CLASSES: 'flex gap-2',
-  TREE_CONTAINER_CLASSES: 'space-y-1 p-4 rounded-lg overflow-y-auto',
+  TREE_CONTAINER_CLASSES: 'space-y-1 rounded-lg overflow-y-auto',
   ADD_ROOT_BUTTON_CLASSES: 'flex justify-center items-center px-4 py-2 rounded-lg w-full',
 } as const;

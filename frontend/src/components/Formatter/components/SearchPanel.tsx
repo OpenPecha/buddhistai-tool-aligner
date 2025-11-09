@@ -52,11 +52,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
               
               {/* Show selected text portion if any */}
               {textSelection && textSelection.nodeId === selectedSegment ? (
-                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
-                  <div className="text-xs text-yellow-700 font-medium mb-1">Selected Text:</div>
-                  <div className="text-sm text-yellow-800 bg-white p-2 rounded border border-yellow-200 max-h-20 overflow-y-auto">
+                <div>
                     "{textSelection.selectedText}"
-                  </div>
                   <div className="text-xs text-yellow-600 mt-1">
                     Position: {textSelection.start} - {textSelection.end} ({textSelection.selectedText.length} chars)
                   </div>

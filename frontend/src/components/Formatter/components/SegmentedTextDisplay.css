@@ -1,0 +1,266 @@
+/* Segmented Text Display Styles */
+.segmented-text-display {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segments-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.segment-wrapper {
+  position: relative;
+}
+
+/* Segment Block Styles */
+.segment-block {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.segment-block:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.segment-block.selected {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.segment-block.has-title {
+  border-left: 4px solid #10b981;
+}
+
+.segment-block.has-title.selected {
+  border-left: 4px solid #059669;
+}
+
+/* Segment Header */
+.segment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.segment-id {
+  font-weight: 600;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.segment-range {
+  color: #9ca3af;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.segment-title {
+  font-weight: 600;
+  color: #059669;
+  background: #d1fae5;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.add-title-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  font-size: 1rem;
+}
+
+.add-title-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Segment Content */
+.segment-content {
+  line-height: 1.6;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Selection Indicator */
+.selection-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #3b82f6;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Title Input Styles */
+.title-input-container {
+  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  background: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  position: relative;
+}
+
+.title-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #d97706;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: white;
+}
+
+.title-input:focus {
+  outline: none;
+  border-color: #b45309;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+}
+
+.title-input-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Title Suggestions Dropdown */
+.title-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0.75rem;
+  right: 0.75rem;
+  margin-top: 0.5rem;
+  background: white;
+  border: 2px solid #f59e0b;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.suggestions-header {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.suggestion-item {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.suggestion-item.selected {
+  font-weight: 600;
+}
+
+.title-submit-btn,
+.title-cancel-btn {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-submit-btn {
+  background: #10b981;
+  color: white;
+}
+
+.title-submit-btn:hover {
+  background: #059669;
+}
+
+.title-cancel-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.title-cancel-btn:hover {
+  background: #dc2626;
+}
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .segmented-text-display {
+    padding: 0.75rem;
+  }
+  
+  .segment-header {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .segment-title {
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+  
+  .title-input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .title-input-buttons {
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+}
