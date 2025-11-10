@@ -53,7 +53,8 @@ function TargetSelectionPanel() {
     sourceInstanceId,
     targetInstanceId,
     setSourceText,
-    setTargetText
+    setTargetText,
+    setTargetType
   } = useTextSelectionStore();
   
   const [selectedInstanceId, setSelectedInstanceId] = React.useState<string | null>(targetInstanceId || null);
@@ -61,6 +62,39 @@ function TargetSelectionPanel() {
   const [panelMode, setPanelMode] = React.useState<'related' | 'empty'>('related');
   
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Helper function to determine target type from metadata
+  const determineTargetType = React.useCallback((instanceData: any): 'translation' | 'commentary' | null => {
+    if (!instanceData) return null;
+    
+    // Check for metadata in related instance format
+    if (instanceData.metadata) {
+      const instanceType = instanceData.metadata.instance_type?.toLowerCase() || '';
+      const relationship = instanceData.metadata.relationship?.toLowerCase() || instanceData.relationship?.toLowerCase() || '';
+      
+      // Check for commentary indicators
+      if (instanceType.includes('commentary') || relationship.includes('commentary')) {
+        return 'commentary';
+      }
+      
+      // Check for translation indicators
+      if (instanceType.includes('translation') || relationship.includes('translation')) {
+        return 'translation';
+      }
+    }
+    
+    // Check for direct instance type field
+    const instanceType = instanceData.instance_type?.toLowerCase() || instanceData.type?.toLowerCase() || '';
+    if (instanceType.includes('commentary')) {
+      return 'commentary';
+    }
+    if (instanceType.includes('translation')) {
+      return 'translation';
+    }
+    
+    // Default to translation for database texts
+    return 'translation';
+  }, []);
 
   const handleChangeSearchParams = React.useCallback((updates: Record<string, string>) => {
     setSearchParams((prev) => {
@@ -222,6 +256,13 @@ function TargetSelectionPanel() {
         'database'
       );
       
+      // Determine and set target type based on metadata
+      const selectedInstance = relatedInstances.find(instance => 
+        (instance.instance_id || instance.id) === selectedInstanceId
+      );
+      const targetType = determineTargetType(selectedInstance);
+      setTargetType(targetType);
+      
       // Update URL parameters for target selection
       handleChangeSearchParams({
         tTextId: `related-${selectedInstanceId}`,
@@ -231,7 +272,7 @@ function TargetSelectionPanel() {
     } catch (error) {
       console.error('Error applying segmentation:', error);
     }
-  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, selectedInstanceId, setSourceText, setTargetText, handleChangeSearchParams, panelMode]);
+  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, panelMode, relatedInstances, determineTargetType]);
   
   
   // Available instances are the related instances
@@ -408,6 +449,9 @@ function TargetSelectionPanel() {
         '', // Empty content
         'database'
       );
+      
+      // Clear target type for empty target (user will select manually)
+      setTargetType(null);
 
       // Update URL parameters
       handleChangeSearchParams({
@@ -425,7 +469,7 @@ function TargetSelectionPanel() {
     } catch (error) {
       console.error('Error starting with empty target:', error);
     }
-  }, [sourceInstanceData, sourceSegmentationData, sourceInstanceId, setSourceText, setTargetText, handleChangeSearchParams, isLoadingSourceSegmentation, isLoadingSourceInstance, sourceSegmentationAnnotationId, sourceSegmentationError, validateSegmentationData]);
+  }, [sourceInstanceData, sourceSegmentationData, sourceInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, isLoadingSourceSegmentation, isLoadingSourceInstance, sourceSegmentationAnnotationId, sourceSegmentationError, validateSegmentationData]);
 
   // Handle instance selection from dropdown
   const handleInstanceSelection = React.useCallback((instanceId: string) => {

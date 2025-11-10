@@ -14,6 +14,7 @@ interface TextSelectionState {
   targetText: string;
   isTargetLoaded: boolean;
   targetLoadType: 'database' | 'file' | null; // Track how the text was loaded
+  targetType: 'translation' | 'commentary' | null; // Track the type of target text
   
   // Actions
   setSourceText: (textId: string, instanceId: string, content: string, loadType?: 'database' | 'file') => void;
@@ -23,6 +24,7 @@ interface TextSelectionState {
   clearSourceSelection: () => void;
   clearTargetSelection: () => void;
   clearAllSelections: () => void;
+  setTargetType: (type: 'translation' | 'commentary' | null) => void;
 }
 
 export const useTextSelectionStore = create<TextSelectionState>((set) => ({
@@ -39,6 +41,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
   targetText: '',
   isTargetLoaded: false,
   targetLoadType: null,
+  targetType: null,
   
   // Actions
   setSourceText: (textId: string, instanceId: string, content: string, loadType: 'database' | 'file' = 'database') =>
@@ -57,6 +60,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       targetText: content,
       isTargetLoaded: true,
       targetLoadType: loadType,
+      targetType: loadType === 'database' ? 'translation' : null, // Auto-set to translation for database texts
     }),
 
   setSourceTextFromFile: (content: string) =>
@@ -75,6 +79,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       targetText: content,
       isTargetLoaded: true,
       targetLoadType: 'file',
+      targetType: null, // No auto-selection for file uploads
     }),
     
   clearSourceSelection: () =>
@@ -93,6 +98,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       targetText: '',
       isTargetLoaded: false,
       targetLoadType: null,
+      targetType: null,
     }),
     
   clearAllSelections: () =>
@@ -107,5 +113,11 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       targetText: '',
       isTargetLoaded: false,
       targetLoadType: null,
+      targetType: null,
+    }),
+
+  setTargetType: (type: 'translation' | 'commentary' | null) =>
+    set({
+      targetType: type,
     }),
 }));
