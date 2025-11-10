@@ -40,8 +40,8 @@ function TextEditor({
 
   let currentText = editorType === 'source' ? sourceText : targetText;
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
-  // Local UI state
-  if(!currentText || currentText === ''){
+  // Local UI state - only use root_text if no text has been loaded yet
+  if(!isTextLoaded && (!currentText || currentText === '')){
     currentText = root_text;
   }
   const [value, setValue] = React.useState(currentText);

@@ -2,7 +2,8 @@ import React from 'react';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import type { SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
-import TextSelectionPanel from './TextSelectionPanel';
+import SourceSelectionPanel from './SourceSelectionPanel';
+import TargetSelectionPanel from './TargetSelectionPanel';
 import TextEditor from './TextEditor';
 import TextLoader from './TextLoader';
 
@@ -48,7 +49,11 @@ function Editor({
           onTextLoad={onTextLoad}
         /> : (
           <div className="relative h-full">
-            <TextSelectionPanel editorType={editorType} />
+            {editorType === 'source' ? (
+              <SourceSelectionPanel />
+            ) : (
+              <TargetSelectionPanel />
+            )}
             {/* Add TextLoader to selection panel for file uploads */}
             {/* {onTextLoad && (
               <div className="absolute top-2 right-2 z-20">

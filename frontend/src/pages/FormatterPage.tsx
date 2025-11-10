@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Formatter from '../components/Formatter/Formatter';
 import CatalogerButton from '../components/CatalogerButton';
 
 function FormatterPage() {
+  const [searchParams] = useSearchParams();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
@@ -11,7 +13,7 @@ function FormatterPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link
-                to="/"
+                to={`/?${searchParams.toString()}`}
                 className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

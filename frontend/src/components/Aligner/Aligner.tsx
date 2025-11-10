@@ -4,7 +4,6 @@ import MappingSidebar from './components/MappingSidebar';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMappingState } from './hooks/useMappingState';
 import { useTextSelectionStore } from '../../stores/textSelectionStore';
-import TextSelectionPanel from './components/TextSelectionPanel';
 import { EditorProvider, useEditorContext } from './context';
 import TextNavigationBar from './components/TextNavigationBar';
 
