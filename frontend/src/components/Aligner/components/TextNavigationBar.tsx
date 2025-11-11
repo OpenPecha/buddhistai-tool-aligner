@@ -18,13 +18,23 @@ function TextNavigationBar() {
   const { data: sourceInstanceData } = useQuery({
     queryKey: ['sourceInstanceNav', selectedSourceInstanceId],
     queryFn: () => fetchInstance(selectedSourceInstanceId!),
-    enabled: Boolean(selectedSourceInstanceId)
+    enabled: Boolean(selectedSourceInstanceId),
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 
   // Fetch target instance details (skip if in empty state)
   const { data: targetInstanceData } = useQuery({
     queryKey: ['targetInstanceNav', selectedTargetInstanceId],
     queryFn: () => fetchInstance(selectedTargetInstanceId!),
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
     enabled: Boolean(selectedTargetInstanceId) && targetState !== 'empty'
   });
 

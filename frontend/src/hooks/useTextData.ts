@@ -49,6 +49,11 @@ export const useTexts = (params?: {
     queryKey: textKeys.list(params || {}),
     queryFn: () => fetchTexts(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 };
 
@@ -61,6 +66,11 @@ export const useTextInstances = (textId: string | null) => {
     queryFn: () => textId ? fetchTextInstances(textId) : null,
     enabled: !!textId,
     staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 };
 
@@ -73,6 +83,11 @@ export const useInstance = (instanceId: string | null) => {
     queryFn: () => instanceId ? fetchInstance(instanceId) : null,
     enabled: !!instanceId && instanceId !== '',
     staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 };
 
@@ -85,6 +100,11 @@ export const useAnnotation = (annotationId: string | null) => {
     queryFn: () => annotationId ? fetchAnnotation(annotationId) : null,
     enabled: !!annotationId && annotationId !== '',
     staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 };
 
@@ -212,6 +232,11 @@ export const useTextFromInstance = (
         errors: errors.length > 0 ? errors : undefined
       };
     },
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
     enabled: !!instanceData && !isLoadingInstance && (!segmentationAnnotationId || !isLoadingAnnotation),
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -250,6 +275,11 @@ export const useAlignmentData = (
         isReady: true
       };
     },
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
     enabled: !!sourceQuery.data && !!targetQuery.data,
     staleTime: 10 * 60 * 1000, // 10 minutes
   });

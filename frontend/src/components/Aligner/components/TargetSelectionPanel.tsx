@@ -139,14 +139,24 @@ function TargetSelectionPanel() {
   const { data: alignmentAnnotation, isLoading: isLoadingAlignment, error: alignmentError } = useQuery({
     queryKey: ['alignmentAnnotation', selectedAnnotationId],
     queryFn: () => fetchAnnotation(selectedAnnotationId!),
-    enabled: Boolean(selectedAnnotationId)
+    enabled: Boolean(selectedAnnotationId),
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 
   // Fetch source instance content
   const { data: sourceInstanceData, isLoading: isLoadingSourceInstance } = useQuery({
     queryKey: ['sourceInstance', sourceInstanceId],
     queryFn: () => fetchInstance(sourceInstanceId!),
-    enabled: Boolean(sourceInstanceId)
+    enabled: Boolean(sourceInstanceId),
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 
   // Fetch source segmentation annotation for empty mode
@@ -177,7 +187,12 @@ function TargetSelectionPanel() {
       const result = await fetchAnnotation(sourceSegmentationAnnotationId!);
       return result;
     },
-    enabled: Boolean(sourceSegmentationAnnotationId)
+    enabled: Boolean(sourceSegmentationAnnotationId),
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 
 
@@ -185,7 +200,12 @@ function TargetSelectionPanel() {
   const { data: targetInstanceData, isLoading: isLoadingTargetInstance } = useQuery({
     queryKey: ['targetInstance', selectedInstanceId],
     queryFn: () => fetchInstance(selectedInstanceId!),
-    enabled: Boolean(selectedInstanceId) && panelMode === 'related'
+    enabled: Boolean(selectedInstanceId) && panelMode === 'related',
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
   });
 
 

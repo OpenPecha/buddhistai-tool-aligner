@@ -70,6 +70,11 @@ export const useRelatedInstances = (
         return [];
       }
     },
+    refetchInterval:false,
+    refetchOnWindowFocus:false,
+    refetchOnMount:false,
+    refetchOnReconnect:false,
+    refetchIntervalInBackground:false,
     enabled: Boolean(instanceId) && (options.enabled !== false),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
