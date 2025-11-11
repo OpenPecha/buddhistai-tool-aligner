@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { TextMapping, TextSelection } from '../types';
 import { useEditorContext } from '../context';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import TypeSelector from './TypeSelector';
+import PublishModal, { type PublishMetadata } from './PublishModal';
+import { transformMappingsToAPI, validatePublishData, getMappingsSummary } from '../utils/publishUtils';
+import { createTranslation, createCommentary } from '../../../api/text';
 
 interface MappingSidebarProps {
   mappings: TextMapping[];
@@ -28,7 +31,13 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
   onClearSelections,
 }) => {
   const { generateSentenceMappings, getSourceContent, getTargetContent } = useEditorContext();
-  const { targetType } = useTextSelectionStore();
+  const { targetType, sourceInstanceId } = useTextSelectionStore();
+  
+  // Modal and loading states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
   
   const formatText = (text: string, maxLength: number = 50) => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
@@ -44,28 +53,88 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
   };
 
 
-  const onPublishMappings = async () => {
-    const mappings = generateSentenceMappings();
+  // Handle opening publish modal
+  const handlePublishClick = () => {
+    // Clear previous messages
+    setPublishError(null);
+    setPublishSuccess(null);
+    
+    // Validate data before opening modal
+    const sentenceMappings = generateSentenceMappings();
     const sourceContent = getSourceContent();
     const targetContent = getTargetContent();
     
+    const validation = validatePublishData(sentenceMappings, sourceContent, targetContent);
     
+    if (!validation.isValid) {
+      setPublishError(validation.error || 'Validation failed');
+      return;
+    }
+    
+    if (!targetType) {
+      setPublishError('Please select a target type (Translation or Commentary) before publishing');
+      return;
+    }
+    
+    if (!sourceInstanceId) {
+      setPublishError('Source instance ID is required for publishing');
+      return;
+    }
+    
+    setIsModalOpen(true);
+  };
 
+  // Handle actual publishing after metadata is collected
+  const handlePublishSubmit = async (metadata: PublishMetadata) => {
+    setIsPublishing(true);
+    setPublishError(null);
     
-    // Summary data for API submission
-    const publishData = {
-      type: targetType,
-      mappings: mappings,
-      metadata: {
-        sourceLength: sourceContent?.length || 0,
-        targetLength: targetContent?.length || 0,
-        totalMappings: mappings.length,
-        emptySourceMappings: mappings.filter(m => m.source.start === -1).length,
-        emptyTargetMappings: mappings.filter(m => m.target.start === -1).length,
-        timestamp: new Date().toISOString()
+    try {
+      const sentenceMappings = generateSentenceMappings();
+      const targetContent = getTargetContent();
+      
+      if (!targetContent) {
+        throw new Error('Target content is required');
       }
-    };
-    
+      
+      // Transform mappings to API format
+      const publishData = transformMappingsToAPI(sentenceMappings, targetContent, metadata);
+      
+      // Call appropriate API based on target type
+      let result;
+      if (targetType === 'translation') {
+        result = await createTranslation(sourceInstanceId!, publishData);
+      } else if (targetType === 'commentary') {
+        result = await createCommentary(sourceInstanceId!, publishData);
+      } else {
+        throw new Error('Invalid target type');
+      }
+      
+      // Success
+      setPublishSuccess(`${targetType === 'translation' ? 'Translation' : 'Commentary'} published successfully! ID: ${result.instance_id}`);
+      setIsModalOpen(false);
+      
+      // Log summary for debugging
+      const summary = getMappingsSummary(sentenceMappings);
+      console.log('Published successfully:', {
+        type: targetType,
+        instanceId: result.instance_id,
+        summary
+      });
+      
+    } catch (error) {
+      console.error('Publishing failed:', error);
+      setPublishError(error instanceof Error ? error.message : 'Publishing failed');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Handle closing modal
+  const handleModalClose = () => {
+    if (!isPublishing) {
+      setIsModalOpen(false);
+    }
   };
 
   return (
@@ -79,175 +148,47 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
         
         {/* Publish Button */}
         <button 
-          onClick={onPublishMappings} 
-          className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors mb-3"
+          onClick={handlePublishClick} 
+          disabled={isPublishing}
+          className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors mb-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
-          Publish Mappings
+          {isPublishing && (
+            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
+          <span>{isPublishing ? 'Saving...' : 'Save Mappings'}</span>
         </button>
+        
+        {/* Success Message */}
+        {publishSuccess && (
+          <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm text-green-800">{publishSuccess}</p>
+          </div>
+        )}
+        
+        {/* Error Message */}
+        {publishError && (
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-800">{publishError}</p>
+          </div>
+        )}
         
         <p className="text-sm text-gray-600">
           {mappings.length} mapping{mappings.length !== 1 ? 's' : ''} created
         </p>
       </div>
 
-      {/* Current Selection Status */}
-      <div className="p-4 border-b border-gray-200 bg-blue-50">
-        <h3 className="text-sm font-medium text-gray-900 mb-2">Current Selection</h3>
-        
-        {/* Source Selection */}
-        <div className="mb-3">
-          <div className="text-xs text-gray-600 mb-1">Source Editor:</div>
-          {currentSourceSelection ? (
-            <div className="bg-white p-2 rounded border text-sm">
-              <div className="text-gray-800 font-medium">
-                "{formatText(currentSourceSelection.text, 40)}"
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Position: {currentSourceSelection.start}-{currentSourceSelection.end}
-              </div>
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500 italic">No selection</div>
-          )}
-        </div>
-
-        {/* Target Selections */}
-        <div className="mb-3">
-          <div className="text-xs text-gray-600 mb-1">
-            Target Editor ({currentTargetSelections.length} selection{currentTargetSelections.length !== 1 ? 's' : ''}):
-          </div>
-          {currentTargetSelections.length > 0 ? (
-            <div className="space-y-1">
-              {currentTargetSelections.map((selection, index) => (
-                <div key={index} className="bg-white p-2 rounded border text-sm">
-                  <div className="text-gray-800 font-medium">
-                    "{formatText(selection.text, 40)}"
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Position: {selection.start}-{selection.end}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500 italic">No selections</div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-2">
-          {/* Create Mapping Button */}
-          <button
-            onClick={onCreateMapping}
-            disabled={!canCreateMapping}
-            className={`w-full py-2 px-3 rounded text-sm font-medium transition-colors ${
-              canCreateMapping
-                ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Create Mapping
-          </button>
-
-          {/* Reset Selections Button */}
-          {(currentSourceSelection || currentTargetSelections.length > 0) && (
-            <button
-              onClick={onClearSelections}
-              className="w-full py-2 px-3 rounded text-sm font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors"
-            >
-              Reset Selections
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Mappings List */}
-      <div className="flex-1 overflow-y-auto">
-        {mappings.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
-            <div className="text-4xl mb-2">📝</div>
-            <p className="text-sm">No mappings created yet</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Select text in both editors to create your first mapping
-            </p>
-          </div>
-        ) : (
-          <div className="p-4 space-y-3">
-            {mappings.map((mapping) => (
-              <div
-                key={mapping.id}
-                className="bg-gray-50 rounded-lg border p-3 hover:shadow-sm transition-shadow"
-              >
-                {/* Mapping Header */}
-                <div className="flex items-center justify-between mb-2">
-                  <div
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: mapping.color }}
-                    title={`Mapping color: ${mapping.color}`}
-                  />
-                  <div className="text-xs text-gray-500">
-                    {formatDate(mapping.createdAt)}
-                  </div>
-                </div>
-
-                {/* Source Text */}
-                <div className="mb-2">
-                  <div className="text-xs text-gray-600 mb-1">Source:</div>
-                  <div className="text-sm text-gray-800 bg-white p-2 rounded border">
-                    "{formatText(mapping.sourceText)}"
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Position: {mapping.sourceStart}-{mapping.sourceEnd}
-                  </div>
-                </div>
-
-                {/* Target Mappings */}
-                <div className="mb-3">
-                  <div className="text-xs text-gray-600 mb-1">
-                    Target ({mapping.targetMappings.length}):
-                  </div>
-                  <div className="space-y-1">
-                    {mapping.targetMappings.map((target, index) => (
-                      <div key={index} className="text-sm text-gray-800 bg-white p-2 rounded border">
-                        <div>"{formatText(target.text)}"</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Position: {target.start}-{target.end}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Delete Button */}
-                <button
-                  onClick={() => onDeleteMapping(mapping.id)}
-                  className="w-full py-1 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                >
-                  Delete Mapping
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Footer Actions */}
-      {mappings.length > 0 && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-2">
-          <button
-            onClick={onExportMappings}
-            className="w-full py-2 px-3 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-          >
-            Export Mappings
-          </button>
-          <button
-            onClick={onClearAllMappings}
-            className="w-full py-2 px-3 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
-          >
-            Clear All Mappings
-          </button>
-        </div>
-      )}
+      
+      {/* Publish Modal */}
+      <PublishModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSubmit={handlePublishSubmit}
+        targetType={targetType}
+        isLoading={isPublishing}
+      />
     </div>
   );
 };

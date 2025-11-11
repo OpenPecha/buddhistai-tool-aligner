@@ -1,0 +1,88 @@
+import { useState, useEffect } from "react";
+
+const API_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:8000';
+
+export interface BdrcSearchResult {
+  workId?: string;
+  instanceId?: string;
+  prefLabel?: string;
+  catalogInfo?: string | null;
+  creator?: string | null;
+  language?: string | null;
+  workGenre?: string | null;
+  workHasInstance?: string[];
+  entityScore?: number | null;
+  // Person-specific fields
+  bdrc_id?: string;
+  name?: string;
+}
+
+/**
+ * Custom hook for searching BDRC entries
+ * 
+ * @param searchQuery - The search query string
+ * @param type - The type to search for (Instance, Text, Person, etc.)
+ * @param debounceMs - Debounce delay in milliseconds (default: 500ms)
+ * @returns search results and loading state
+ */
+
+export function useBdrcSearch(searchQuery: string, type: "Instance" | "Person" = "Instance", debounceMs: number = 1000) {
+  const [results, setResults] = useState<BdrcSearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If search query is empty, reset results
+    if (!searchQuery.trim()) {
+      setResults([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Set loading immediately
+    setIsLoading(true);
+    setError(null);
+
+    // Debounce API call
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`${API_URL}/bdrc/search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            search_query: searchQuery.trim(),
+            from: 0,
+            size: 20,
+            filter: [],
+            type: type,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to search BDRC entries");
+        }
+
+        const data = await response.json();
+        setResults(Array.isArray(data) ? data : []);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, type, debounceMs]);
+
+  return {
+    results,
+    isLoading,
+    error,
+  };
+}
+

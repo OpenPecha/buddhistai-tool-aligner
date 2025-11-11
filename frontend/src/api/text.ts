@@ -101,6 +101,118 @@ export const createTextInstance = async (textId: string, instanceData: {
   return await response.json();
 };
 
+
+
+
+// API function for creating commentary for a specific instance
+export const createCommentary = async (instanceId: string, commentaryData: {
+  language: string;
+  content: string;
+  title: string;
+  author: {
+    person_bdrc_id: string;
+  };
+  category_id: string;
+  segmentation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+  }>;
+  target_annotation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+    index: number;
+  }>;
+  alignment_annotation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+    index: number;
+    alignment_index: number[];
+  }>;
+  copyright: string;
+}): Promise<{
+  text_id: string;
+  instance_id: string;
+  segmentation_annotation_id?: string;
+  target_annotation_id?: string;
+  alignment_annotation_id?: string;
+}> => {
+  const response = await fetch(`${API_URL}/instances/${instanceId}/commentary`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(commentaryData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.details || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+// API function for creating translation for a specific instance
+export const createTranslation = async (instanceId: string, translationData: {
+  language: string;
+  content: string;
+  title: string;
+  author: {
+    person_bdrc_id: string;
+  };
+  category_id: string;
+  segmentation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+  }>;
+  target_annotation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+    index: number;
+  }>;
+  alignment_annotation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+    index: number;
+    alignment_index: number[];
+  }>;
+  copyright: string;
+}): Promise<{
+  text_id: string;
+  instance_id: string;
+  segmentation_annotation_id?: string;
+  target_annotation_id?: string;
+  alignment_annotation_id?: string;
+}> => {
+  const response = await fetch(`${API_URL}/instances/${instanceId}/translation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(translationData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.details || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+
 // Inference API function for alignment analysis
 export const fetchAlignmentInference = async (textId: string): Promise<{
   alignment_details: Array<{

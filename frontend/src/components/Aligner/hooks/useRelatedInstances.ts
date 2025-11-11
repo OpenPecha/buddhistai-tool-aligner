@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchRelatedInstances } from '../../../api/instances';
 
 interface RelatedInstance {
   // Support both API response formats
@@ -39,36 +40,11 @@ export const useRelatedInstances = (
 ) => {
   return useQuery({
     queryKey: ['relatedInstances', instanceId],
-    queryFn: async (): Promise<RelatedInstance[]> => {
+    queryFn: (): Promise<RelatedInstance[]> => {
       if (!instanceId) {
         throw new Error('Instance ID is required');
       }
-
-      const response = await fetch(
-        `https://openpecha-text-cataloger.onrender.com/instances/${instanceId}/related`,
-        {
-          headers: {
-            'accept': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch related instances: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      // Ensure we return an array
-      if (Array.isArray(data)) {
-        return data;
-      } else if (data && typeof data === 'object') {
-        // If it's a single object, wrap it in an array
-        return [data];
-      } else {
-        // If no data or invalid format, return empty array
-        return [];
-      }
+      return fetchRelatedInstances(instanceId);
     },
     refetchInterval:false,
     refetchOnWindowFocus:false,

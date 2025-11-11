@@ -7,7 +7,7 @@ import { useEditorContext } from '../context';
 
 function TextNavigationBar() {
   const { clearAllSelections } = useTextSelectionStore();
-  const { isScrollSyncEnabled, setScrollSyncEnabled, loadAlignmentData } = useEditorContext();
+  const { isScrollSyncEnabled, setScrollSyncEnabled} = useEditorContext();
   const [searchParams] = useSearchParams();
 
   const selectedSourceInstanceId = searchParams.get('sInstanceId');
@@ -103,76 +103,6 @@ function TextNavigationBar() {
     clearAllSelections();
   };
 
-  // Demo function to load the provided alignment data
-  const handleLoadDemoAlignment = () => {
-    const demoAlignmentData = {
-      "id": "tz6zT01QG8SPUfRbuMn4U",
-      "type": "alignment",
-      "data": {
-        "alignment_annotation": [
-          {
-            "id": "lYkyb7ZC37tILSaoFJqxS",
-            "span": { "start": 0, "end": 186 },
-            "index": 0,
-            "alignment_index": [0]
-          },
-          {
-            "id": "iD2Y83zzKA7tbgKWh4zi8",
-            "span": { "start": 186, "end": 373 },
-            "index": 1,
-            "alignment_index": [1]
-          },
-          {
-            "id": "jhS6FFxJgqqNqN075wOED",
-            "span": { "start": 373, "end": 583 },
-            "index": 2,
-            "alignment_index": [2]
-          },
-          {
-            "id": "qphEitsjyHkyGGVx69MNE",
-            "span": { "start": 583, "end": 742 },
-            "index": 3,
-            "alignment_index": [3]
-          },
-          {
-            "id": "u6aneGyRVlnor0gx7KpxK",
-            "span": { "start": 742, "end": 921 },
-            "index": 4,
-            "alignment_index": [4]
-          }
-        ],
-        "target_annotation": [
-          {
-            "id": "JQRxMC2nadnXqTraEQA71",
-            "span": { "start": 0, "end": 150 },
-            "index": 0
-          },
-          {
-            "id": "B7lK1HFEImTrwTDLTOplA",
-            "span": { "start": 150, "end": 288 },
-            "index": 1
-          },
-          {
-            "id": "eT1uY7q7sw00y6ytqj0o2",
-            "span": { "start": 288, "end": 431 },
-            "index": 2
-          },
-          {
-            "id": "kdHVTvW4kXOWjT471NQ4G",
-            "span": { "start": 431, "end": 504 },
-            "index": 3
-          },
-          {
-            "id": "2q5exaN4XtDwUcAzW9vCi",
-            "span": { "start": 504, "end": 645 },
-            "index": 4
-          }
-        ]
-      }
-    };
-    loadAlignmentData(demoAlignmentData);
-  };
-
   return (
     <div className="bg-white border-b border-gray-200 p-3">
       <div className="flex items-center justify-between gap-4">
@@ -208,14 +138,7 @@ function TextNavigationBar() {
             </span>
           </label>
           
-          {/* Load Demo Alignment Button */}
-          <button 
-            onClick={handleLoadDemoAlignment} 
-            className="px-3 py-1 text-sm text-green-700 hover:text-green-900 hover:bg-green-50 rounded transition-colors border border-green-200 hover:border-green-300"
-            title="Load demo alignment data for testing"
-          >
-            Load Demo
-          </button>
+       
           
           {/* Reset Button */}
           <button 
