@@ -1,22 +1,19 @@
 import React from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { EditorSelection } from '@codemirror/state';
+import { EditorSelection, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import { Prec } from '@codemirror/state';
-import TextLoader from './TextLoader';
 import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
+import { useEditorContext } from '../context';
 import { root_text } from '../../../data/text';
-import { generateFileSegmentation, applySegmentation } from '../../../lib/annotation';
 
 interface TextEditorProps {
-  ref: React.RefObject<ReactCodeMirrorRef | null> | null;
-  isEditable: boolean;
-  editorId: string;
-  editorType: EditorType;
-  onSelectionChange?: SelectionHandler;
-  mappings?: TextMapping[];
-  onTextLoad?: (text: string, source: 'file' | 'api') => void;
+  readonly ref: React.RefObject<ReactCodeMirrorRef | null> | null;
+  readonly isEditable: boolean;
+  readonly editorId: string;
+  readonly editorType: EditorType;
+  readonly onSelectionChange?: SelectionHandler;
+  readonly mappings?: TextMapping[];
 }
 
 function TextEditor({
@@ -25,21 +22,47 @@ function TextEditor({
   editorId,
   editorType,
   onSelectionChange,
-  mappings = [],
-  onTextLoad
+  mappings = []
 }: TextEditorProps) {
+  // Editor context for scroll synchronization
+  const { syncScrollToLine, syncToClickedLine, isScrollSyncing } = useEditorContext();
+  
   // Zustand store
   const {
     sourceText, 
     isSourceLoaded,
     targetText, 
     isTargetLoaded,
-    setSourceTextFromFile,
+    targetTextId,
+    targetLoadType,
     setTargetTextFromFile
   } = useTextSelectionStore();
-
   let currentText = editorType === 'source' ? sourceText : targetText;
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
+  
+  // Track if this target editor was initially empty (to maintain editability)
+  const [wasInitiallyEmptyTarget] = React.useState(() => 
+    editorType === 'target' && targetTextId === 'empty-target'
+  );
+  
+  // Determine if editor should be fully editable (allow text input, backspace, delete)
+  // For target editor: when it was initially empty OR when it's loaded from file (user input)
+  // For source editor: never fully editable (keep current behavior)
+  const isFullyEditable = editorType === 'target' && 
+    (wasInitiallyEmptyTarget || targetLoadType === 'file');
+  
+  // Debug logging
+  React.useEffect(() => {
+    if (editorType === 'target') {
+      console.log('TextEditor Debug:', {
+        targetTextId,
+        targetLoadType,
+        wasInitiallyEmptyTarget,
+        isFullyEditable,
+        currentText: currentText.substring(0, 50) + '...'
+      });
+    }
+  }, [editorType, targetTextId, targetLoadType, wasInitiallyEmptyTarget, isFullyEditable, currentText]);
   // Local UI state - only use root_text if no text has been loaded yet
   if(!isTextLoaded && (!currentText || currentText === '')){
     currentText = root_text;
@@ -60,7 +83,12 @@ function TextEditor({
   const onChange = React.useCallback((val: string) => {
     console.log('val:', val);
     setValue(val);
-  }, []);
+    
+    // If this is a target editor that should be editable, update the store with the new content
+    if (editorType === 'target' && (wasInitiallyEmptyTarget || targetLoadType === 'file')) {
+      setTargetTextFromFile(val);
+    }
+  }, [editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile]);
 
   // Handle text selection
   const handleSelectionChange = React.useCallback((selection: EditorSelection) => {
@@ -91,9 +119,14 @@ function TextEditor({
     }
   }, [value, editorId, onSelectionChange, editorType, isSourceLoaded]);
 
-  // Prevent backspace and delete keys
+  // Handle key restrictions based on editor type and state
   const handleKeyDown = React.useCallback((event: React.KeyboardEvent) => {
-    // Block backspace and delete keys
+    // If fully editable (empty target), allow all keys
+    if (isFullyEditable) {
+      return; // Allow all keyboard input
+    }
+    
+    // For non-fully-editable editors, block destructive keys
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
       event.stopPropagation();
@@ -107,44 +140,61 @@ function TextEditor({
       return;
     }
     
-    // Only allow Enter key when isEditable is true
+    // Only allow Enter key when isEditable is true (for selection-only mode)
     if (isEditable && event.key !== 'Enter') {
       event.preventDefault();
       event.stopPropagation();
     }
-  }, [isEditable]);
+  }, [isEditable, isFullyEditable]);
 
-  // Handle text loading from file or API
-  const handleTextLoad = React.useCallback((text: string, source: 'file' | 'api') => {
-    let processedText = text;
+  // Handle scroll synchronization with throttling
+  const lastScrollLineRef = React.useRef<number>(0);
+  const handleScroll = React.useCallback((view: EditorView) => {
+    if (isScrollSyncing.current) return; // Don't sync if we're already syncing
     
-    // For file uploads, apply segmentation based on existing newlines
-    if (source === 'file') {
-      const fileSegmentation = generateFileSegmentation(text);
-      if (fileSegmentation.length > 0) {
-        processedText = applySegmentation(text, fileSegmentation);
-      }
+    try {
+      // Get the current viewport
+      const viewport = view.viewport;
+      const doc = view.state.doc;
       
-      // Update the store with the processed text
-      if (editorType === 'source') {
-        setSourceTextFromFile(processedText);
-      } else if (editorType === 'target') {
-        setTargetTextFromFile(processedText);
+      // Find the line number at the top of the viewport
+      const topLine = doc.lineAt(viewport.from);
+      const lineNumber = topLine.number;
+      
+      // Only sync if the line number has changed significantly (avoid micro-scrolls)
+      if (Math.abs(lineNumber - lastScrollLineRef.current) >= 1) {
+        lastScrollLineRef.current = lineNumber;
+        // Sync the other editor to this line
+        syncScrollToLine(editorType, lineNumber);
       }
-    } else {
-      // For API loads, just set the value directly
-      setValue(processedText);
+    } catch (error) {
+      console.error('Error handling scroll:', error);
+    }
+  }, [editorType, syncScrollToLine, isScrollSyncing]);
+
+  // Handle click synchronization
+  const handleClick = React.useCallback((view: EditorView, event: MouseEvent) => {
+    try {
+      // Get the position where the user clicked
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (pos !== null) {
+        // Trigger synchronization to the clicked line
+        syncToClickedLine(pos, editorType);
+      }
+    } catch (error) {
+      console.error('Error handling click:', error);
+    }
+  }, [editorType, syncToClickedLine]);
+
+  const showSourceSelectionRequired = false;
+
+  // Create extension to block deletion keys (only when not fully editable)
+  const blockDeletionExtension = React.useMemo(() => {
+    // If fully editable, return empty extension (allow all keys)
+    if (isFullyEditable) {
+      return [];
     }
     
-    if (onTextLoad) {
-      onTextLoad(processedText, source);
-    }
-  }, [onTextLoad, editorType, setSourceTextFromFile, setTargetTextFromFile]);
-//  const showSourceSelectionRequired = editorType === 'target' && !isSourceLoaded;
-const showSourceSelectionRequired = false;
-
-  // Create extension to block deletion keys
-  const blockDeletionExtension = React.useMemo(() => {
     return Prec.highest(keymap.of([
       {
         key: 'Backspace',
@@ -163,14 +213,31 @@ const showSourceSelectionRequired = false;
         run: () => true,
       },
     ]));
-  }, []);
+  }, [isFullyEditable]);
+
+  // Create scroll synchronization extension
+  const scrollSyncExtension = React.useMemo(() => {
+    return EditorView.updateListener.of((update) => {
+      // Only handle scroll events, not other updates
+      if (update.geometryChanged || update.viewportChanged) {
+        handleScroll(update.view);
+      }
+    });
+  }, [handleScroll]);
+
+  // Create click synchronization extension
+  const clickSyncExtension = React.useMemo(() => {
+    return EditorView.domEventHandlers({
+      click: (event, view) => {
+        handleClick(view, event);
+        return false; // Don't prevent default click behavior
+      }
+    });
+  }, [handleClick]);
 
   return (
     <div className="relative h-full editor-container overflow-hidden">
-      {/* Text Loader for both Source and Target Editors */}
-      {/* {onTextLoad && (
-        <TextLoader onTextLoad={handleTextLoad} />
-      )} */}
+   
 
       {/* Editor Container with proper width constraints */}
       <div className="w-full h-full box-border relative" style={{ fontFamily: 'var(--font-monlam)' }}>
@@ -181,7 +248,7 @@ const showSourceSelectionRequired = false;
           ref={ref}
           className="w-full h-full text-lg" 
           onChange={onChange}  
-          editable={isEditable}
+          editable={isFullyEditable || isEditable}
           onKeyDown={handleKeyDown}
           onUpdate={(viewUpdate) => {
             if (viewUpdate.selectionSet) {
@@ -203,7 +270,11 @@ const showSourceSelectionRequired = false;
             // Enable line wrapping for text that exceeds container width
             EditorView.lineWrapping,
             // Block deletion keys at editor level
-            blockDeletionExtension
+            blockDeletionExtension,
+            // Scroll synchronization
+            scrollSyncExtension,
+            // Click synchronization
+            clickSyncExtension
           ]}
         />
         

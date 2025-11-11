@@ -24,10 +24,7 @@ function AlignerContent() {
   } = useMappingState();
 
   // Use Zustand store for text state
-  const {
-    isSourceLoaded, isTargetLoaded,
-    clearAllSelections
-  } = useTextSelectionStore();
+  const {    isSourceLoaded, isTargetLoaded  } = useTextSelectionStore();
 
   // Always show editors
   const showEditors = true;
@@ -49,15 +46,9 @@ function AlignerContent() {
     URL.revokeObjectURL(url);
   };
 
-  // Handle clearing all data
-  const handleClearAll = React.useCallback(() => {
-    clearAllSelections();
-    clearAllMappings();
-    clearSelections();
-  }, [clearAllSelections, clearAllMappings, clearSelections]);
-
-
+  const targetType = useTextSelectionStore((state) => state.targetType);
   const bothTextLoaded= isSourceLoaded && isTargetLoaded;
+  const mapAvailable = bothTextLoaded ;
   return (
     <div className='w-full h-full flex flex-col'>
       {/* Header */}
@@ -81,7 +72,6 @@ function AlignerContent() {
                  editorType="source"
                  onSelectionChange={selectionHandler}
                  mappings={mappings}
-                 onTextLoad={() => {}} // Enable file upload for source editor
                  showContentOnlyWhenBothLoaded={true}
                />
             </Panel>
@@ -104,7 +94,6 @@ function AlignerContent() {
                  editorType="target"
                  onSelectionChange={selectionHandler}
                  mappings={mappings}
-                 onTextLoad={() => {}} // Enable file upload for target editor
                  showContentOnlyWhenBothLoaded={true}
                />
             </Panel>
@@ -163,6 +152,12 @@ function AlignerContent() {
           </div>
         </div>
       )}
+      <div className='h-8 bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
+       {
+        mapAvailable ? <span>Only Enter and Undo (Ctrl+Z / Cmd+Z) keys are available for editing</span> : 
+        <span>Edit the translation/commentary text</span>
+       } 
+      </div>
     </div>
   );
 }

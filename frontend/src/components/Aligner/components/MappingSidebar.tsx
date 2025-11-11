@@ -27,7 +27,7 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
   onExportMappings,
   onClearSelections,
 }) => {
-  const { generateSentenceMappings } = useEditorContext();
+  const { generateSentenceMappings, getSourceContent, getTargetContent } = useEditorContext();
   const { targetType } = useTextSelectionStore();
   
   const formatText = (text: string, maxLength: number = 50) => {
@@ -46,10 +46,47 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
 
   const onPublishMappings = async () => {
     const mappings = generateSentenceMappings();
-    console.log('Publishing mappings with type:', {
-      type: targetType,
-      mappings: mappings
+    const sourceContent = getSourceContent();
+    const targetContent = getTargetContent();
+    
+    console.log('=== PUBLISHING MAPPINGS ===');
+    console.log('Target Type:', targetType);
+    console.log('Total Mappings:', mappings.length);
+    console.log('');
+    
+    // Log each mapping with detailed information
+    mappings.forEach((mapping, index) => {
+      const sourceText = mapping.source.start === -1 
+        ? '[EMPTY]' 
+        : sourceContent?.substring(mapping.source.start, mapping.source.end) || '[ERROR]';
+      
+      const targetText = mapping.target.start === -1 
+        ? '[EMPTY]' 
+        : targetContent?.substring(mapping.target.start, mapping.target.end) || '[ERROR]';
+      
+      console.log(`Mapping ${index + 1}:`);
+      console.log(`  Source (${mapping.source.start}-${mapping.source.end}): "${sourceText}"`);
+      console.log(`  Target (${mapping.target.start}-${mapping.target.end}): "${targetText}"`);
+      console.log(`  ID: ${mapping.source.index}`);
+      console.log('');
     });
+    
+    // Summary data for API submission
+    const publishData = {
+      type: targetType,
+      mappings: mappings,
+      metadata: {
+        sourceLength: sourceContent?.length || 0,
+        targetLength: targetContent?.length || 0,
+        totalMappings: mappings.length,
+        emptySourceMappings: mappings.filter(m => m.source.start === -1).length,
+        emptyTargetMappings: mappings.filter(m => m.target.start === -1).length,
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    console.log('=== PUBLISH DATA SUMMARY ===');
+    console.log(publishData);
   };
 
   return (

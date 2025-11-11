@@ -46,7 +46,6 @@ function Editor({
           editorType={editorType}
           onSelectionChange={onSelectionChange}
           mappings={mappings}
-          onTextLoad={onTextLoad}
         /> : (
           <div className="relative h-full">
             {editorType === 'source' ? (
@@ -54,17 +53,7 @@ function Editor({
             ) : (
               <TargetSelectionPanel />
             )}
-            {/* Add TextLoader to selection panel for file uploads */}
-            {/* {onTextLoad && (
-              <div className="absolute top-2 right-2 z-20">
-                <TextLoader onTextLoad={(text: string, source: 'file' | 'api') => {
-                  // Handle file upload in selection panel
-                  if (source === 'file') {
-                    onTextLoad(text, source);
-                  }
-                }} />
-              </div>
-            )} */}
+       
           </div>
         )}
     </div>

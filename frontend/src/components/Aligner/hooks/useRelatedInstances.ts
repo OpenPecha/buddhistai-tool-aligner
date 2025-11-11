@@ -45,7 +45,7 @@ export const useRelatedInstances = (
       }
 
       const response = await fetch(
-        `https://openpecha-text-cataloger.onrender.com/instances/${instanceId}/relatedto`,
+        `https://openpecha-text-cataloger.onrender.com/instances/${instanceId}/related`,
         {
           headers: {
             'accept': 'application/json',

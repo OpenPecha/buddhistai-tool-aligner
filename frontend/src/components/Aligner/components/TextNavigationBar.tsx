@@ -3,9 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useQuery } from '@tanstack/react-query';
 import { fetchInstance } from '../../../api/text';
+import { useEditorContext } from '../context';
 
 function TextNavigationBar() {
   const { clearAllSelections } = useTextSelectionStore();
+  const { isScrollSyncEnabled, setScrollSyncEnabled, loadAlignmentData } = useEditorContext();
   const [searchParams] = useSearchParams();
 
   const selectedSourceInstanceId = searchParams.get('sInstanceId');
@@ -91,6 +93,45 @@ function TextNavigationBar() {
     clearAllSelections();
   };
 
+  // Demo function to load the provided alignment data
+  const handleLoadDemoAlignment = () => {
+    const demoAlignmentData = {
+      "id": "ob3n2c6ImzDfawre4Hv3Q",
+      "type": "alignment",
+      "data": {
+        "alignment_annotation": [
+          {
+            "id": "dFSoBbdS9ru8iwgpU8DWl",
+            "span": { "start": 0, "end": 186 },
+            "index": 0,
+            "alignment_index": [0]
+          },
+          {
+            "id": "sXOAcwj8cIpfipxZ2xRYz",
+            "span": { "start": 186, "end": 373 },
+            "index": 1,
+            "alignment_index": [1]
+          },
+          // Add more segments as needed for demo
+        ],
+        "target_annotation": [
+          {
+            "id": "ux4bMolTKfcj4YpK1ng4S",
+            "span": { "start": 0, "end": 150 },
+            "index": 0
+          },
+          {
+            "id": "AotmqZLhmBm2BaG6Qa3Ei",
+            "span": { "start": 150, "end": 288 },
+            "index": 1
+          },
+          // Add more segments as needed for demo
+        ]
+      }
+    };
+    loadAlignmentData(demoAlignmentData);
+  };
+
   return (
     <div className="bg-white border-b border-gray-200 p-3">
       <div className="flex items-center justify-between gap-4">
@@ -108,12 +149,41 @@ function TextNavigationBar() {
             </div>
           </div>
         </div>
-        <button 
-          onClick={handleReset} 
-          className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-        >
-          Reset
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Scroll Sync Toggle */}
+          <label className={`flex items-center gap-2 text-sm cursor-pointer transition-colors px-2 py-1 rounded ${
+            isScrollSyncEnabled 
+              ? 'text-blue-700 bg-blue-50 hover:bg-blue-100' 
+              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+            <input
+              type="checkbox"
+              checked={isScrollSyncEnabled}
+              onChange={(e) => setScrollSyncEnabled(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <span className="select-none font-medium">
+              {isScrollSyncEnabled ? '🔗 Smart Sync (Alignment-aware)' : 'Smart Sync'}
+            </span>
+          </label>
+          
+          {/* Load Demo Alignment Button */}
+          <button 
+            onClick={handleLoadDemoAlignment} 
+            className="px-3 py-1 text-sm text-green-700 hover:text-green-900 hover:bg-green-50 rounded transition-colors border border-green-200 hover:border-green-300"
+            title="Load demo alignment data for testing"
+          >
+            Load Demo
+          </button>
+          
+          {/* Reset Button */}
+          <button 
+            onClick={handleReset} 
+            className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
   );
