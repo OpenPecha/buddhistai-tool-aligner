@@ -114,14 +114,6 @@ function AlignerContent() {
               >
                 <MappingSidebar
                   mappings={mappings}
-                  currentSourceSelection={currentSourceSelection}
-                  currentTargetSelections={currentTargetSelections}
-                  canCreateMapping={canCreateMapping}
-                  onCreateMapping={createMapping}
-                  onDeleteMapping={deleteMapping}
-                  onClearAllMappings={clearAllMappings}
-                  onExportMappings={handleExportMappings}
-                  onClearSelections={clearSelections}
                 />
               </Panel>
             )}

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import { fetchCategories } from '../../../api/category';
 import { useBdrcSearch } from '../hooks/uesBDRC';
+import { MultilevelCategorySelector } from './CategoryList';
 
 interface PublishFormProps {
   onSubmit: (metadata: PublishMetadata) => void;
@@ -35,8 +35,7 @@ const PublishForm: React.FC<PublishFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Partial<PublishMetadata & { author_person_bdrc_id: string }>>({});
-  const [categories, setCategories] = useState<Array<{ id: string; title: string }>>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [selectedCategoryPath, setSelectedCategoryPath] = useState<Array<{ id: string; title: string; parentId: string | null }>>([]);
   
   // BDRC Person search state
   const [authorSearchQuery, setAuthorSearchQuery] = useState('');
@@ -46,24 +45,22 @@ const PublishForm: React.FC<PublishFormProps> = ({
   // BDRC search hook
   const { results: authorResults, isLoading: isLoadingAuthors } = useBdrcSearch(authorSearchQuery, "Person", 300);
 
-  // Fetch categories when component mounts
-  useEffect(() => {
-    if (categories.length === 0) {
-      setIsLoadingCategories(true);
-      fetchCategories({ application: 'webuddhist', language: 'bo' })
-        .then((fetchedCategories) => {
-          setCategories(fetchedCategories);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch categories:', error);
-          // Set a fallback empty array if fetch fails
-          setCategories([]);
-        })
-        .finally(() => {
-          setIsLoadingCategories(false);
-        });
+  // Handle category selection
+  const handleCategorySelect = (categoryId: string, path: Array<{ id: string; title: string; parentId: string | null }>) => {
+    setFormData(prev => ({
+      ...prev,
+      category_id: categoryId
+    }));
+    setSelectedCategoryPath(path);
+    
+    // Clear category error
+    if (errors.category_id) {
+      setErrors(prev => ({
+        ...prev,
+        category_id: undefined
+      }));
     }
-  }, [categories.length]);
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<PublishMetadata & { author_person_bdrc_id: string }> = {};
@@ -158,27 +155,13 @@ const PublishForm: React.FC<PublishFormProps> = ({
     }
   };
 
-  // Reset form function (can be called externally if needed)
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      language: 'en',
-      author: { person_bdrc_id: '' },
-      category_id: '',
-      copyright: 'public',
-    });
-    setErrors({});
-    setAuthorSearchQuery('');
-    setSelectedAuthor(null);
-    setShowAuthorDropdown(false);
-  };
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="pb-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900">
-          Publish {targetType === 'translation' ? 'Translation' : 'Commentary'}
+          {targetType === 'translation' ? 'Translation' : 'Commentary'}
         </h3>
       </div>
 
@@ -303,29 +286,20 @@ const PublishForm: React.FC<PublishFormProps> = ({
 
           {/* Category */}
           <div>
-            <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 mb-1">
-              Category *
-            </label>
-            <select
-              id="category_id"
-              value={formData.category_id}
-              onChange={(e) => handleInputChange('category_id', e.target.value)}
-              disabled={isLoading || isLoadingCategories}
-              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                errors.category_id ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
-              }`}
-            >
-              <option value="">
-                {isLoadingCategories ? 'Loading categories...' : 'Select a category'}
-              </option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.title}
-                </option>
-              ))}
-            </select>
+            <MultilevelCategorySelector
+              onCategorySelect={handleCategorySelect}
+              error={!!errors.category_id}
+            />
             {errors.category_id && (
               <p className="mt-1 text-xs text-red-600">{errors.category_id}</p>
+            )}
+            {/* Show selected category path */}
+            {selectedCategoryPath.length > 0 && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="text-sm text-blue-800">
+                  <span className="font-medium">Selected:</span> {selectedCategoryPath.map(cat => cat.title).join(' > ')}
+                </div>
+              </div>
             )}
           </div>
 

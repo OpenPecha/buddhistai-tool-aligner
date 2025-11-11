@@ -33,7 +33,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({ className = '' }) =>
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="text-xs font-semibold text-gray-600 uppercase">
-        Target Type
+       What are you aligning?
       </div>
       
       <div className="flex gap-2">

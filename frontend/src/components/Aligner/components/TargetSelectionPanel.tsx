@@ -211,37 +211,45 @@ function TargetSelectionPanel() {
 
   // Apply segmentation when alignment annotation and instance data are available (only in related mode)
   React.useEffect(() => {
-    if (!alignmentAnnotation || !sourceInstanceData || !targetInstanceData) {
+    if (!sourceInstanceData || !targetInstanceData) {
       return;
     }
     if (panelMode !== 'related') return; // Skip in empty mode
 
     setLoadingAnnotations(true, 'Applying alignment annotations...');
     
-    const alignmentData = alignmentAnnotation as unknown as AlignmentAnnotationResponse;
-    
     try {
-      // Access the nested data structure
-      const annotationData = alignmentData.data;
+      let segmentedSourceText: string;
+      let segmentedTargetText: string;
       
-      // Validate alignment data structure
-      if (!annotationData.target_annotation || !Array.isArray(annotationData.target_annotation)) {
-        throw new Error('Invalid target_annotation: expected array but got ' + typeof annotationData.target_annotation);
+      // Try to apply alignment annotation if available
+      if (alignmentAnnotation) {
+        const alignmentData = alignmentAnnotation as unknown as AlignmentAnnotationResponse;
+        const annotationData = alignmentData.data;
+        
+        // Validate alignment data structure
+        if (annotationData?.target_annotation && Array.isArray(annotationData.target_annotation) &&
+            annotationData?.alignment_annotation && Array.isArray(annotationData.alignment_annotation)) {
+          
+          // Apply target_annotation segmentation to source text
+          const sourceContent = sourceInstanceData.content || '';
+          segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
+          
+          // Apply alignment_annotation segmentation to target text
+          const targetContent = targetInstanceData.content || '';
+          segmentedTargetText = applySegmentation(targetContent, annotationData.alignment_annotation);
+        } else {
+          // Fallback to plain text if annotation data is invalid
+          segmentedSourceText = sourceInstanceData.content || '';
+          segmentedTargetText = targetInstanceData.content || '';
+        }
+      } else {
+        // No alignment annotation available, use plain text
+        segmentedSourceText = sourceInstanceData.content || '';
+        segmentedTargetText = targetInstanceData.content || '';
       }
       
-      if (!annotationData.alignment_annotation || !Array.isArray(annotationData.alignment_annotation)) {
-        throw new Error('Invalid alignment_annotation: expected array but got ' + typeof annotationData.alignment_annotation);
-      }
-      
-      // Apply target_annotation segmentation to source text (keeping current mapping)
-      const sourceContent = sourceInstanceData.content || '';
-      const segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
-      
-      // Apply alignment_annotation segmentation to target text (keeping current mapping)
-      const targetContent = targetInstanceData.content || '';
-      const segmentedTargetText = applySegmentation(targetContent, annotationData.alignment_annotation);
-      
-      // Update the store with segmented texts (preserve original sourceTextId)
+      // Update the store with texts (preserve original sourceTextId)
       setSourceText(
         sourceTextId || sourceInstanceData.id || 'source-instance',
         sourceInstanceId!,
@@ -274,6 +282,7 @@ function TargetSelectionPanel() {
       
     } catch {
       setLoadingAnnotations(false);
+      setAnnotationsApplied(true);
     }
   }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, panelMode, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
   
@@ -405,6 +414,7 @@ function TargetSelectionPanel() {
     
     reader.onerror = () => {
       setLoadingAnnotations(false);
+      setAnnotationsApplied(true);
     };
     
     reader.readAsText(file);
@@ -510,6 +520,7 @@ function TargetSelectionPanel() {
 
     } catch {
       setLoadingAnnotations(false);
+      setAnnotationsApplied(true);
     }
   }, [sourceInstanceData, sourceSegmentationData, sourceInstanceId, sourceTextId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, isLoadingSourceSegmentation, isLoadingSourceInstance, sourceSegmentationAnnotationId, sourceSegmentationError, validateSegmentationData, setLoadingAnnotations, setAnnotationsApplied]);
 
