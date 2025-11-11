@@ -49,27 +49,8 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
     const sourceContent = getSourceContent();
     const targetContent = getTargetContent();
     
-    console.log('=== PUBLISHING MAPPINGS ===');
-    console.log('Target Type:', targetType);
-    console.log('Total Mappings:', mappings.length);
-    console.log('');
     
-    // Log each mapping with detailed information
-    mappings.forEach((mapping, index) => {
-      const sourceText = mapping.source.start === -1 
-        ? '[EMPTY]' 
-        : sourceContent?.substring(mapping.source.start, mapping.source.end) || '[ERROR]';
-      
-      const targetText = mapping.target.start === -1 
-        ? '[EMPTY]' 
-        : targetContent?.substring(mapping.target.start, mapping.target.end) || '[ERROR]';
-      
-      console.log(`Mapping ${index + 1}:`);
-      console.log(`  Source (${mapping.source.start}-${mapping.source.end}): "${sourceText}"`);
-      console.log(`  Target (${mapping.target.start}-${mapping.target.end}): "${targetText}"`);
-      console.log(`  ID: ${mapping.source.index}`);
-      console.log('');
-    });
+
     
     // Summary data for API submission
     const publishData = {
@@ -85,8 +66,6 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
       }
     };
     
-    console.log('=== PUBLISH DATA SUMMARY ===');
-    console.log(publishData);
   };
 
   return (

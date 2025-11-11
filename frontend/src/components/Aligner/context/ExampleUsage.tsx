@@ -18,13 +18,10 @@ export function ExampleMappingButton() {
     const sourceContent = getSourceContent();
     const targetContent = getTargetContent();
     
-    console.log('Source Text:', sourceContent);
-    console.log('Target Text:', targetContent);
     
     // Generate sentence-to-sentence mappings
     const mappings: SentenceMapping[] = generateSentenceMappings();
     
-    console.log('Generated Mappings:', mappings);
     
     // Example: Log each mapping
     mappings.forEach((mapping, index) => {
@@ -37,9 +34,6 @@ export function ExampleMappingButton() {
         mapping.target.end
       );
       
-      console.log(`Mapping ${index + 1}:`);
-      console.log(`  Source (${mapping.source.start}-${mapping.source.end}): "${sourceText}"`);
-      console.log(`  Target (${mapping.target.start}-${mapping.target.end}): "${targetText}"`);
     });
     
     // You can now use these mappings for:

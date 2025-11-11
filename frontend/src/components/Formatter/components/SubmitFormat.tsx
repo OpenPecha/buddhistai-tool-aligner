@@ -13,7 +13,6 @@ function SubmitFormat({segmentAnnotations, hasExistingSegmentation = false}: sub
       const titledSegments = segmentAnnotations.filter(segment => segment.title);
       
       if (titledSegments.length === 0) {
-        console.log([]);
         return [];
       }
       
@@ -74,14 +73,12 @@ function SubmitFormat({segmentAnnotations, hasExistingSegmentation = false}: sub
     };
     
     const result = generateTOC();
-    console.log('Generated TOC:', result);
     
     // Also log in the legacy format for compatibility
     const legacyFormat = result.map(entry => ({
       title: entry.title,
       segments: entry.segmentation
     }));
-    console.log('Legacy format:', legacyFormat);
   }
 
   return (

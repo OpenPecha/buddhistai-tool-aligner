@@ -113,12 +113,9 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
           }
           
           if (annotationArray.length > 0) {
-            console.log('Processing annotations:', annotationArray);
-            console.log('Base text length:', baseText.length);
             
             // Apply segmentation to content
             content = applySegmentation(baseText, annotationArray);
-            console.log('Segmented content:', content);
             
             // Convert to formatter-compatible segments
             segmentAnnotations = annotationArray.map((seg: APISegmentationAnnotation, index: number) => ({
@@ -126,7 +123,6 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
               start: seg.span?.start || 0,
               end: seg.span?.end || 0,
             }));
-            console.log('Segment annotations:', segmentAnnotations);
           }
         } catch (segError) {
           console.warn('Error applying segmentation:', segError);
@@ -164,18 +160,9 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     const isAnnotationReady = segmentationAnnotationId ? !isLoadingAnnotation : true;
     
     if (instanceData && selectedInstanceId && !isProcessing && isAnnotationReady) {
-      console.log('All data ready, processing text...', {
-        hasSegmentation: !!segmentationAnnotationId,
-        annotationLoaded: !!segmentationData,
-        isLoadingAnnotation
-      });
+      
       processAndLoadText();
-    } else if (instanceData && selectedInstanceId && segmentationAnnotationId && isLoadingAnnotation) {
-      console.log('Waiting for annotation to load...', {
-        segmentationAnnotationId,
-        isLoadingAnnotation
-      });
-    }
+    } 
   }, [instanceData, segmentationData, selectedInstanceId, isProcessing, processAndLoadText, segmentationAnnotationId, isLoadingAnnotation]);
 
   const handleTextSelect = (textId: string, textTitle?: string) => {

@@ -92,11 +92,7 @@ function Formatter() {
         segment,
         text: baseText.slice(segment.start, segment.end)
       }));
-      console.log('Syncing segmentedText with segmentAnnotations:', {
-        segmentCount: segmentAnnotations.length,
-        segmentsWithTitles: segmentAnnotations.filter(s => s.title).length,
-        titles: segmentAnnotations.filter(s => s.title).map(s => ({ id: s.id, title: s.title }))
-      });
+     
       setSegmentedText(updatedSegmentedText);
     }
   }, [segmentAnnotations, baseText]);
@@ -108,18 +104,10 @@ function Formatter() {
       const generated = segmentAnnotations
         .map(segment => baseText.slice(segment.start, segment.end))
         .join('\n');
-      console.log('Generated editorText from segments:', {
-        segmentCount: segmentAnnotations.length,
-        baseTextLength: baseText.length,
-        generatedLength: generated.length,
-        preview: generated.substring(0, 100)
-      });
+  
       return generated;
     }
-    console.log('Using baseText or root_text:', {
-      baseTextLength: baseText.length,
-      usingRootText: !baseText
-    });
+ 
     return baseText || root_text;
   }, [segmentAnnotations, baseText]);
 
@@ -131,12 +119,7 @@ function Formatter() {
     segmentAnnotations: SegmentAnnotation[];
     segmentedText: Array<{segment: SegmentAnnotation, text: string}>;
   }) => {
-    console.log('handleTextLoad called with:', {
-      instanceId: data.instanceId,
-      baseTextLength: data.baseText.length,
-      segmentAnnotationsCount: data.segmentAnnotations.length,
-      segmentedTextCount: data.segmentedText.length
-    });
+ 
     setInstanceId(data.instanceId);
     setBaseText(data.baseText);
     setSegmentAnnotations(data.segmentAnnotations);
@@ -153,10 +136,7 @@ function Formatter() {
     // - Not ready to load (still fetching data)
     if (!urlInstanceId || instanceId || !isReadyToLoad) return;
     
-    console.log('Auto-loading instance from URL:', urlInstanceId, {
-      hasSegmentation: !!urlSegmentationAnnotationId,
-      segmentationLoaded: !!urlSegmentationData
-    });
+  
     
     const loadUrlInstance = async () => {
       try {
@@ -179,7 +159,6 @@ function Formatter() {
             }
             
             if (annotationArray.length > 0) {
-              console.log('Processing annotations from URL:', annotationArray);
               
               // Apply segmentation to content
               content = applySegmentation(baseText, annotationArray);
@@ -210,7 +189,6 @@ function Formatter() {
         setSelectedSegments([]);
         setHasExistingSegmentation(segmentAnnotations.length > 0);
         
-        console.log('Auto-loaded instance from URL successfully');
       } catch (error) {
         console.error('Error auto-loading instance from URL:', error);
       }
@@ -254,11 +232,7 @@ function Formatter() {
   const handleAssignTitleToSegments = useCallback((title: string, segmentIds?: string[]) => {
     const targetSegments = segmentIds || selectedSegments;
     
-    console.log('Assigning title to segments:', {
-      title,
-      targetSegments,
-      segmentCount: targetSegments.length
-    });
+   
     
     setSegmentAnnotations(prev => {
       const updated = prev.map(segment => 
@@ -266,7 +240,6 @@ function Formatter() {
           ? { ...segment, title }
           : segment
       );
-      console.log('Updated segment annotations:', updated);
       return updated;
     });
     

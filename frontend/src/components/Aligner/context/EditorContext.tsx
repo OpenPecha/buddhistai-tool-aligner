@@ -45,28 +45,13 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
     const targetSentences = splitIntoSentences(targetContent);
     const mappings: SentenceMapping[] = [];
     
-    // Create content without empty lines for position calculation
-    const sourceNonEmpty = sourceSentences.filter(s => s.trim().length > 0);
-    const targetNonEmpty = targetSentences.filter(t => t.trim().length > 0);
     
-    // Build the actual content strings without empty lines
-    const sourceContentClean = sourceNonEmpty.join('\n');
-    const targetContentClean = targetNonEmpty.join('\n');
     
     let sourcePos = 0;
     let targetPos = 0;
     let sourceIndex = 0; // Index in sourceNonEmpty array
     let targetIndex = 0; // Index in targetNonEmpty array
     
-    // Debug logging
-    console.log('=== MAPPING DEBUG ===');
-    console.log('Source sentences:', sourceSentences.length);
-    sourceSentences.forEach((s, i) => console.log(`S${i+1}: "${s}"`));
-    console.log('Target sentences:', targetSentences.length);
-    targetSentences.forEach((t, i) => console.log(`T${i+1}: "${t}"`));
-    console.log('Source clean:', sourceContentClean);
-    console.log('Target clean:', targetContentClean);
-    console.log('==================');
 
     // Handle mapping with empty target segments
     const maxLength = Math.max(sourceSentences.length, targetSentences.length);
@@ -208,7 +193,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
             
             if (targetAnnotation) {
               targetPosition = targetAnnotation.span.start;
-              console.log(`External alignment sync: source ${sourceAnnotation.span.start}-${sourceAnnotation.span.end} -> target ${targetAnnotation.span.start}-${targetAnnotation.span.end}`);
             }
           }
         } else {
@@ -225,7 +209,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
             
             if (sourceAnnotation) {
               targetPosition = sourceAnnotation.span.start;
-              console.log(`External alignment sync: target ${targetAnnotation.span.start}-${targetAnnotation.span.end} -> source ${sourceAnnotation.span.start}-${sourceAnnotation.span.end}`);
             }
           }
         }
@@ -269,7 +252,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
               // Found matching source segment, get corresponding target position
               if (targetSpan.start >= 0 && targetSpan.end >= 0) {
                 targetPosition = targetSpan.start;
-                console.log(`Alignment sync: source segment ${sourceSpan.start}-${sourceSpan.end} -> target segment ${targetSpan.start}-${targetSpan.end}`);
               }
               break;
             }
@@ -279,7 +261,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
               // Found matching target segment, get corresponding source position
               if (sourceSpan.start >= 0 && sourceSpan.end >= 0) {
                 targetPosition = sourceSpan.start;
-                console.log(`Alignment sync: target segment ${targetSpan.start}-${targetSpan.end} -> source segment ${sourceSpan.start}-${sourceSpan.end}`);
               }
               break;
             }
@@ -343,7 +324,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
           isScrollSyncing.current = false;
         }, 100);
         
-        console.log(`Line sync fallback: ${fromEditor} line ${lineNumber} -> ${fromEditor === 'source' ? 'target' : 'source'} line ${targetLineNumber}`);
       }
     } catch (error) {
       console.error('Error syncing to clicked line:', error);

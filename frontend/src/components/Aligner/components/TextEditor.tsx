@@ -53,18 +53,6 @@ function TextEditor({
   const isFullyEditable = editorType === 'target' && 
     (wasInitiallyEmptyTarget || targetLoadType === 'file');
   
-  // Debug logging
-  React.useEffect(() => {
-    if (editorType === 'target') {
-      console.log('TextEditor Debug:', {
-        targetTextId,
-        targetLoadType,
-        wasInitiallyEmptyTarget,
-        isFullyEditable,
-        currentText: currentText.substring(0, 50) + '...'
-      });
-    }
-  }, [editorType, targetTextId, targetLoadType, wasInitiallyEmptyTarget, isFullyEditable, currentText]);
   // Determine if we should show placeholder text instead of actual content
   const shouldShowPlaceholder = isLoadingAnnotations || (isTextLoaded && !annotationsApplied);
   
@@ -101,7 +89,6 @@ function TextEditor({
   }, [currentText, editorId, onSelectionChange, shouldShowPlaceholder, isLoadingAnnotations]);
   
   const onChange = React.useCallback((val: string) => {
-    console.log('val:', val);
     
     // Don't allow editing when showing placeholder text
     if (shouldShowPlaceholder) {

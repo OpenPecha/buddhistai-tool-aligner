@@ -151,40 +151,22 @@ function TargetSelectionPanel() {
 
   // Fetch source segmentation annotation for empty mode
   const sourceSegmentationAnnotationId = React.useMemo(() => {
-    console.log('=== SEGMENTATION ANNOTATION ID EXTRACTION ===');
-    console.log('Source instance data:', sourceInstanceData);
-    
     if (!sourceInstanceData) {
-      console.warn('No source instance data available');
       return null;
     }
 
     if (!sourceInstanceData.annotations) {
-      console.warn('No annotations property in source instance data');
       return null;
     }
 
     if (!Array.isArray(sourceInstanceData.annotations)) {
-      console.warn('Annotations is not an array:', typeof sourceInstanceData.annotations, sourceInstanceData.annotations);
       return null;
     }
 
-    console.log('Available annotations:', sourceInstanceData.annotations);
-    
     // Look for segmentation annotation in the source instance
     const segmentationAnnotation = (sourceInstanceData.annotations as Array<{type: string; annotation_id?: string}>).find((annotation) => {
-      console.log('Checking annotation:', annotation);
-      console.log('Annotation type:', annotation.type);
-      console.log('Is segmentation?', annotation.type === 'segmentation');
       return annotation.type === 'segmentation';
     });
-    
-    if (segmentationAnnotation) {
-      console.log('✅ Found segmentation annotation:', segmentationAnnotation);
-      console.log('Segmentation annotation ID:', segmentationAnnotation.annotation_id);
-    } else {
-      console.warn('❌ No segmentation annotation found in annotations array');
-    }
     
     return segmentationAnnotation?.annotation_id || null;
   }, [sourceInstanceData]);
@@ -192,36 +174,12 @@ function TargetSelectionPanel() {
   const { data: sourceSegmentationData, isLoading: isLoadingSourceSegmentation, error: sourceSegmentationError } = useQuery({
     queryKey: ['sourceSegmentation', sourceSegmentationAnnotationId],
     queryFn: async () => {
-      console.log('=== FETCHING SEGMENTATION ANNOTATION ===');
-      console.log('Annotation ID:', sourceSegmentationAnnotationId);
-      try {
-        const result = await fetchAnnotation(sourceSegmentationAnnotationId!);
-        console.log('✅ Segmentation annotation fetched successfully:', result);
-        return result;
-      } catch (error) {
-        console.error('❌ Error fetching segmentation annotation:', error);
-        throw error;
-      }
+      const result = await fetchAnnotation(sourceSegmentationAnnotationId!);
+      return result;
     },
     enabled: Boolean(sourceSegmentationAnnotationId)
   });
 
-  // Log segmentation data changes
-  React.useEffect(() => {
-    console.log('=== SEGMENTATION DATA UPDATE ===');
-    console.log('Loading:', isLoadingSourceSegmentation);
-    console.log('Error:', sourceSegmentationError);
-    console.log('Data:', sourceSegmentationData);
-    
-    if (sourceSegmentationData) {
-      console.log('Segmentation data type:', typeof sourceSegmentationData);
-      console.log('Is array:', Array.isArray(sourceSegmentationData));
-      if (Array.isArray(sourceSegmentationData)) {
-        console.log('Array length:', sourceSegmentationData.length);
-        console.log('First few items:', sourceSegmentationData.slice(0, 3));
-      }
-    }
-  }, [sourceSegmentationData, isLoadingSourceSegmentation, sourceSegmentationError]);
 
   // Fetch target instance content (only in related mode)
   const { data: targetInstanceData, isLoading: isLoadingTargetInstance } = useQuery({
@@ -230,44 +188,14 @@ function TargetSelectionPanel() {
     enabled: Boolean(selectedInstanceId) && panelMode === 'related'
   });
 
-  // Console log the alignment annotation response when it's available
-  React.useEffect(() => {
-    if (alignmentAnnotation) {
-      console.log('🔍 Alignment annotation response received:', alignmentAnnotation);
-      console.log('🔍 Alignment annotation type:', typeof alignmentAnnotation);
-      console.log('🔍 Alignment annotation keys:', Object.keys(alignmentAnnotation));
-      
-      // Check if it has the expected structure
-      const data = alignmentAnnotation as unknown as AlignmentAnnotationResponse;
-      if (data.data) {
-        console.log('🔍 Alignment data keys:', Object.keys(data.data));
-        console.log('🔍 target_annotation type:', typeof data.data.target_annotation);
-        console.log('🔍 alignment_annotation type:', typeof data.data.alignment_annotation);
-        
-        if (Array.isArray(data.data.target_annotation)) {
-          console.log('🔍 target_annotation length:', data.data.target_annotation.length);
-        }
-        if (Array.isArray(data.data.alignment_annotation)) {
-          console.log('🔍 alignment_annotation length:', data.data.alignment_annotation.length);
-        }
-      }
-    }
-  }, [alignmentAnnotation]);
 
   // Apply segmentation when alignment annotation and instance data are available (only in related mode)
   React.useEffect(() => {
     if (!alignmentAnnotation || !sourceInstanceData || !targetInstanceData) {
-      console.log('⏳ Waiting for alignment data:', {
-        hasAlignment: !!alignmentAnnotation,
-        hasSource: !!sourceInstanceData,
-        hasTarget: !!targetInstanceData,
-        panelMode
-      });
       return;
     }
     if (panelMode !== 'related') return; // Skip in empty mode
 
-    console.log('🎯 Applying alignment segmentation...');
     setLoadingAnnotations(true, 'Applying alignment annotations...');
     
     const alignmentData = alignmentAnnotation as unknown as AlignmentAnnotationResponse;
@@ -285,11 +213,6 @@ function TargetSelectionPanel() {
         throw new Error('Invalid alignment_annotation: expected array but got ' + typeof annotationData.alignment_annotation);
       }
       
-      console.log('📊 Alignment data validation passed:', {
-        targetAnnotationCount: annotationData.target_annotation.length,
-        alignmentAnnotationCount: annotationData.alignment_annotation.length
-      });
-      
       // Apply target_annotation segmentation to source text (keeping current mapping)
       const sourceContent = sourceInstanceData.content || '';
       const segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
@@ -298,22 +221,7 @@ function TargetSelectionPanel() {
       const targetContent = targetInstanceData.content || '';
       const segmentedTargetText = applySegmentation(targetContent, annotationData.alignment_annotation);
       
-      console.log('✅ Segmentation applied:', {
-        sourceSegments: annotationData.target_annotation.length,
-        targetSegments: annotationData.alignment_annotation.length,
-        originalSourceLength: sourceContent.length,
-        originalTargetLength: targetContent.length,
-        segmentedSourceLength: segmentedSourceText.length,
-        segmentedTargetLength: segmentedTargetText.length
-      });
-      
       // Update the store with segmented texts (preserve original sourceTextId)
-      console.log('🔄 Updating store with segmented texts...');
-      console.log('Source text ID:', sourceTextId || sourceInstanceData.id || 'source-instance');
-      console.log('Source instance ID:', sourceInstanceId);
-      console.log('Target text ID:', `related-${selectedInstanceId}`);
-      console.log('Target instance ID:', selectedInstanceId);
-      
       setSourceText(
         sourceTextId || sourceInstanceData.id || 'source-instance',
         sourceInstanceId!,
@@ -328,8 +236,6 @@ function TargetSelectionPanel() {
         'database'
       );
       
-      console.log('✅ Store updated - editors should now be visible');
-      
       // Determine and set target type based on metadata
       const selectedInstance = relatedInstances.find(instance => 
         (instance.instance_id || instance.id) === selectedInstanceId
@@ -343,13 +249,10 @@ function TargetSelectionPanel() {
         tInstanceId: selectedInstanceId!
       });
       
-      console.log('✅ Text store updated with segmented content');
-      
       // Mark annotations as applied
       setAnnotationsApplied(true);
       
-    } catch (error) {
-      console.error('❌ Error applying segmentation:', error);
+    } catch {
       setLoadingAnnotations(false);
     }
   }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, panelMode, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
@@ -398,35 +301,28 @@ function TargetSelectionPanel() {
   // Validation function for segmentation data
   const validateSegmentationData = React.useCallback((data: unknown): data is Array<{span: {start: number, end: number}}> => {
     if (!Array.isArray(data)) {
-      console.warn('Segmentation data is not an array:', typeof data, data);
       return false;
     }
 
-    for (let i = 0; i < data.length; i++) {
-      const segment = data[i];
+    for (const segment of data) {
       if (!segment || typeof segment !== 'object') {
-        console.warn(`Segment ${i} is not an object:`, segment);
         return false;
       }
 
       const segmentObj = segment as {span?: {start?: unknown, end?: unknown}};
       if (!segmentObj.span || typeof segmentObj.span !== 'object') {
-        console.warn(`Segment ${i} missing or invalid span:`, segmentObj);
         return false;
       }
 
       if (typeof segmentObj.span.start !== 'number' || typeof segmentObj.span.end !== 'number') {
-        console.warn(`Segment ${i} span has invalid start/end:`, segmentObj.span);
         return false;
       }
 
       if (segmentObj.span.start < 0 || segmentObj.span.end < segmentObj.span.start) {
-        console.warn(`Segment ${i} has invalid span range:`, segmentObj.span);
         return false;
       }
     }
 
-    console.log('Segmentation data validation passed:', data.length, 'segments');
     return true;
   }, []);
 
@@ -458,8 +354,7 @@ function TargetSelectionPanel() {
                 segmentedSourceText,
                 'database'
               );
-            } catch (error) {
-              console.error('Error applying segmentation:', error);
+            } catch {
               setSourceText(
                 sourceInstanceData.id || 'source-instance',
                 sourceInstanceId,
@@ -485,12 +380,10 @@ function TargetSelectionPanel() {
         });
 
         setAnnotationsApplied(true);
-        console.log('✅ File uploaded and segmentation applied');
       }
     };
     
     reader.onerror = () => {
-      console.error('Error reading file');
       setLoadingAnnotations(false);
     };
     
@@ -502,24 +395,15 @@ function TargetSelectionPanel() {
 
   // Handle start empty functionality
   const handleStartEmpty = React.useCallback(() => {
-    console.log('=== HANDLE START EMPTY CALLED ===');
     setLoadingAnnotations(true, 'Applying source segmentation...');
-    console.log('Source instance data available:', !!sourceInstanceData);
-    console.log('Source instance loading:', isLoadingSourceInstance);
-    console.log('Segmentation annotation ID:', sourceSegmentationAnnotationId);
-    console.log('Segmentation data loading:', isLoadingSourceSegmentation);
-    console.log('Segmentation data available:', !!sourceSegmentationData);
-    console.log('Segmentation error:', sourceSegmentationError);
 
     // Check if source instance data is available
     if (!sourceInstanceData) {
-      console.error('❌ Source instance data not available');
       return;
     }
 
     // Check if source instance is still loading
     if (isLoadingSourceInstance) {
-      console.log('⏳ Source instance still loading, please wait...');
       return;
     }
 
@@ -527,18 +411,13 @@ function TargetSelectionPanel() {
     if (sourceSegmentationAnnotationId) {
       // If we have an annotation ID, wait for the segmentation data to load
       if (isLoadingSourceSegmentation) {
-        console.log('⏳ Source segmentation still loading, please wait...');
         return;
       }
 
       // Check for segmentation fetch errors
       if (sourceSegmentationError) {
-        console.error('❌ Error loading segmentation data:', sourceSegmentationError);
         // Continue without segmentation as fallback
       }
-    } else {
-      console.warn('⚠️ No segmentation annotation ID found, proceeding without segmentation');
-      // Continue without segmentation - this is not necessarily an error
     }
 
     try {
@@ -546,9 +425,6 @@ function TargetSelectionPanel() {
       let segmentedSourceText = sourceContent;
 
       // Apply source segmentation if available
-      console.log('=== APPLYING SEGMENTATION ===');
-      console.log('Raw segmentation data:', sourceSegmentationData);
-      
       let segmentationArray = null;
       
       // Handle different possible response formats
@@ -556,7 +432,6 @@ function TargetSelectionPanel() {
         if (Array.isArray(sourceSegmentationData)) {
           // Direct array format
           segmentationArray = sourceSegmentationData;
-          console.log('Using direct array format');
         } else if (typeof sourceSegmentationData === 'object') {
           // Check for common annotation response structures
           const data = sourceSegmentationData as {annotation?: unknown[], annotations?: unknown[], segments?: unknown[], segmentation?: unknown[], data?: unknown[]};
@@ -564,45 +439,24 @@ function TargetSelectionPanel() {
           // Try different possible property names
           if (Array.isArray(data.annotation)) {
             segmentationArray = data.annotation;
-            console.log('Using data.annotation array (singular)');
           } else if (Array.isArray(data.annotations)) {
             segmentationArray = data.annotations;
-            console.log('Using data.annotations array (plural)');
           } else if (Array.isArray(data.segments)) {
             segmentationArray = data.segments;
-            console.log('Using data.segments array');
           } else if (Array.isArray(data.segmentation)) {
             segmentationArray = data.segmentation;
-            console.log('Using data.segmentation array');
           } else if (Array.isArray(data.data)) {
             segmentationArray = data.data;
-            console.log('Using data.data array');
-          } else {
-            console.warn('Unknown segmentation data structure:', Object.keys(data));
           }
         }
       }
       
       if (segmentationArray && validateSegmentationData(segmentationArray)) {
-        console.log('✅ Applying validated segmentation:', segmentationArray.length, 'segments');
-        console.log('Sample segments:', segmentationArray.slice(0, 3).map(seg => ({
-          id: (seg as {id?: string}).id,
-          span: (seg as {span?: {start: number, end: number}}).span
-        })));
-        
         try {
           segmentedSourceText = applySegmentation(sourceContent, segmentationArray);
-          console.log('✅ Segmentation applied successfully');
-          console.log('Original text length:', sourceContent.length);
-          console.log('Segmented text length:', segmentedSourceText.length);
-          console.log('First 200 chars of segmented text:', segmentedSourceText.substring(0, 200));
-        } catch (error) {
-          console.error('❌ Error applying segmentation:', error);
+        } catch {
           segmentedSourceText = sourceContent; // Fallback to original text
         }
-      } else {
-        console.warn('❌ No valid segmentation data available or validation failed');
-        console.log('Available data:', sourceSegmentationData);
       }
 
       // Update source text with segmentation (preserve original sourceTextId)
@@ -631,17 +485,10 @@ function TargetSelectionPanel() {
         tInstanceId: 'empty-instance'
       });
 
-      console.log('=== START EMPTY COMPLETED SUCCESSFULLY ===');
-      console.log('✅ Source text updated with segmentation');
-      console.log('✅ Target text set to empty');
-      console.log('✅ URL parameters updated');
-      console.log('✅ Ready for user input in target editor');
-
       // Mark annotations as applied
       setAnnotationsApplied(true);
 
-    } catch (error) {
-      console.error('Error starting with empty target:', error);
+    } catch {
       setLoadingAnnotations(false);
     }
   }, [sourceInstanceData, sourceSegmentationData, sourceInstanceId, sourceTextId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, isLoadingSourceSegmentation, isLoadingSourceInstance, sourceSegmentationAnnotationId, sourceSegmentationError, validateSegmentationData, setLoadingAnnotations, setAnnotationsApplied]);

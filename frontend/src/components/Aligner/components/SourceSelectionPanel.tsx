@@ -63,7 +63,6 @@ function SourceSelectionPanel() {
     
     try {
       // Set source selection in store (this will make sourceInstanceId available for TargetSelectionPanel)
-      console.log('🔧 Setting source selection:', { textId: selectedTextId, instanceId: selectedInstanceId });
       setSourceSelection(selectedTextId, selectedInstanceId);
       
       // Update URL parameters
@@ -72,7 +71,6 @@ function SourceSelectionPanel() {
         sInstanceId: selectedInstanceId
       });
       
-      console.log('✅ Source selection updated - TargetSelectionPanel should now show related instances');
     } catch (error) {
       console.error('Error updating source parameters:', error);
     }

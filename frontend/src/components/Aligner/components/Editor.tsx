@@ -47,21 +47,7 @@ function Editor({
   // Show loading overlay when annotations are being processed and content is loaded
   const shouldShowLoadingOverlay = isLoadingAnnotations && shouldShowContent;
   
-  // Debug logging for editor visibility
-  React.useEffect(() => {
-    console.log(`📺 ${editorType.toUpperCase()} Editor visibility:`, {
-      isSourceLoaded,
-      isTargetLoaded,
-      isTextLoaded,
-      bothTextsLoaded,
-      showContentOnlyWhenBothLoaded,
-      shouldShowContent,
-      isLoadingAnnotations,
-      annotationsApplied,
-      result: shouldShowContent ? 'SHOW EDITOR' : 'SHOW SELECTION PANEL'
-    });
-  }, [editorType, isSourceLoaded, isTargetLoaded, isTextLoaded, bothTextsLoaded, showContentOnlyWhenBothLoaded, shouldShowContent, isLoadingAnnotations, annotationsApplied]);
-  return (
+ return (
     <div className="relative h-full editor-container overflow-hidden">
       {shouldShowContent ? (
         <>
