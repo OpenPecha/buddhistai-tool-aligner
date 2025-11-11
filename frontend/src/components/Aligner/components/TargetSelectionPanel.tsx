@@ -1,11 +1,12 @@
 import React from 'react';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useRelatedInstances } from '../hooks/useRelatedInstances';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Upload } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAnnotation, fetchInstance } from '../../../api/text';
 import { applySegmentation } from '../../../lib/annotation';
+import LoadingOverlay from './LoadingOverlay';
 
 // Interface for the API response structure
 interface RelatedInstanceResponse {
@@ -27,8 +28,7 @@ interface RelatedInstanceResponse {
 }
 
 // Interface for alignment annotation response
-interface AlignmentAnnotationResponse {
-  annotation: null;
+interface AlignmentAnnotationData {
   alignment_annotation: Array<{
     id: string;
     span: {
@@ -48,13 +48,25 @@ interface AlignmentAnnotationResponse {
   }>;
 }
 
+interface AlignmentAnnotationResponse {
+  id: string;
+  type: string;
+  data: AlignmentAnnotationData;
+}
+
 function TargetSelectionPanel() {
   const {
     sourceInstanceId,
+    sourceTextId,
     targetInstanceId,
     setSourceText,
     setTargetText,
-    setTargetType
+    setTargetType,
+    setTargetTextFromUpload,
+    isLoadingAnnotations,
+    loadingMessage,
+    setLoadingAnnotations,
+    setAnnotationsApplied
   } = useTextSelectionStore();
   
   const [selectedInstanceId, setSelectedInstanceId] = React.useState<string | null>(targetInstanceId || null);
@@ -221,29 +233,89 @@ function TargetSelectionPanel() {
   // Console log the alignment annotation response when it's available
   React.useEffect(() => {
     if (alignmentAnnotation) {
-      console.log('Alignment annotation response:', alignmentAnnotation);
+      console.log('🔍 Alignment annotation response received:', alignmentAnnotation);
+      console.log('🔍 Alignment annotation type:', typeof alignmentAnnotation);
+      console.log('🔍 Alignment annotation keys:', Object.keys(alignmentAnnotation));
+      
+      // Check if it has the expected structure
+      const data = alignmentAnnotation as unknown as AlignmentAnnotationResponse;
+      if (data.data) {
+        console.log('🔍 Alignment data keys:', Object.keys(data.data));
+        console.log('🔍 target_annotation type:', typeof data.data.target_annotation);
+        console.log('🔍 alignment_annotation type:', typeof data.data.alignment_annotation);
+        
+        if (Array.isArray(data.data.target_annotation)) {
+          console.log('🔍 target_annotation length:', data.data.target_annotation.length);
+        }
+        if (Array.isArray(data.data.alignment_annotation)) {
+          console.log('🔍 alignment_annotation length:', data.data.alignment_annotation.length);
+        }
+      }
     }
   }, [alignmentAnnotation]);
 
   // Apply segmentation when alignment annotation and instance data are available (only in related mode)
   React.useEffect(() => {
-    if (!alignmentAnnotation || !sourceInstanceData || !targetInstanceData) return;
+    if (!alignmentAnnotation || !sourceInstanceData || !targetInstanceData) {
+      console.log('⏳ Waiting for alignment data:', {
+        hasAlignment: !!alignmentAnnotation,
+        hasSource: !!sourceInstanceData,
+        hasTarget: !!targetInstanceData,
+        panelMode
+      });
+      return;
+    }
     if (panelMode !== 'related') return; // Skip in empty mode
 
+    console.log('🎯 Applying alignment segmentation...');
+    setLoadingAnnotations(true, 'Applying alignment annotations...');
+    
     const alignmentData = alignmentAnnotation as unknown as AlignmentAnnotationResponse;
     
     try {
-      // Apply target_annotation segmentation to source text
+      // Access the nested data structure
+      const annotationData = alignmentData.data;
+      
+      // Validate alignment data structure
+      if (!annotationData.target_annotation || !Array.isArray(annotationData.target_annotation)) {
+        throw new Error('Invalid target_annotation: expected array but got ' + typeof annotationData.target_annotation);
+      }
+      
+      if (!annotationData.alignment_annotation || !Array.isArray(annotationData.alignment_annotation)) {
+        throw new Error('Invalid alignment_annotation: expected array but got ' + typeof annotationData.alignment_annotation);
+      }
+      
+      console.log('📊 Alignment data validation passed:', {
+        targetAnnotationCount: annotationData.target_annotation.length,
+        alignmentAnnotationCount: annotationData.alignment_annotation.length
+      });
+      
+      // Apply target_annotation segmentation to source text (keeping current mapping)
       const sourceContent = sourceInstanceData.content || '';
-      const segmentedSourceText = applySegmentation(sourceContent, alignmentData.target_annotation);
+      const segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
       
-      // Apply alignment_annotation segmentation to target text  
+      // Apply alignment_annotation segmentation to target text (keeping current mapping)
       const targetContent = targetInstanceData.content || '';
-      const segmentedTargetText = applySegmentation(targetContent, alignmentData.alignment_annotation);
+      const segmentedTargetText = applySegmentation(targetContent, annotationData.alignment_annotation);
       
-      // Update the store with segmented texts
+      console.log('✅ Segmentation applied:', {
+        sourceSegments: annotationData.target_annotation.length,
+        targetSegments: annotationData.alignment_annotation.length,
+        originalSourceLength: sourceContent.length,
+        originalTargetLength: targetContent.length,
+        segmentedSourceLength: segmentedSourceText.length,
+        segmentedTargetLength: segmentedTargetText.length
+      });
+      
+      // Update the store with segmented texts (preserve original sourceTextId)
+      console.log('🔄 Updating store with segmented texts...');
+      console.log('Source text ID:', sourceTextId || sourceInstanceData.id || 'source-instance');
+      console.log('Source instance ID:', sourceInstanceId);
+      console.log('Target text ID:', `related-${selectedInstanceId}`);
+      console.log('Target instance ID:', selectedInstanceId);
+      
       setSourceText(
-        sourceInstanceData.id || 'source-instance',
+        sourceTextId || sourceInstanceData.id || 'source-instance',
         sourceInstanceId!,
         segmentedSourceText,
         'database'
@@ -255,6 +327,8 @@ function TargetSelectionPanel() {
         segmentedTargetText,
         'database'
       );
+      
+      console.log('✅ Store updated - editors should now be visible');
       
       // Determine and set target type based on metadata
       const selectedInstance = relatedInstances.find(instance => 
@@ -269,10 +343,36 @@ function TargetSelectionPanel() {
         tInstanceId: selectedInstanceId!
       });
       
+      console.log('✅ Text store updated with segmented content');
+      
+      // Mark annotations as applied
+      setAnnotationsApplied(true);
+      
     } catch (error) {
-      console.error('Error applying segmentation:', error);
+      console.error('❌ Error applying segmentation:', error);
+      setLoadingAnnotations(false);
     }
-  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, panelMode, relatedInstances, determineTargetType]);
+  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, panelMode, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
+  
+  // Load source text without segmentation when no target is selected or in empty mode
+  React.useEffect(() => {
+    if (!sourceInstanceData || !sourceInstanceId) return;
+    
+    // Only load source text without segmentation if:
+    // 1. We're in empty mode, OR
+    // 2. No target is selected (no alignment annotations will be applied)
+    const shouldLoadPlainSource = panelMode === 'empty' || !selectedInstanceId;
+    
+    if (shouldLoadPlainSource) {
+      const sourceContent = sourceInstanceData.content || '';
+      setSourceText(
+        sourceTextId || sourceInstanceData.id || 'source-instance',
+        sourceInstanceId,
+        sourceContent, // No segmentation applied
+        'database'
+      );
+    }
+  }, [sourceInstanceData, sourceInstanceId, sourceTextId, panelMode, selectedInstanceId, setSourceText]);
   
   
   // Available instances are the related instances
@@ -330,9 +430,80 @@ function TargetSelectionPanel() {
     return true;
   }, []);
 
+  // Handle file upload
+  const handleFileUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLoadingAnnotations(true, 'Processing uploaded file and applying segmentation...');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (content) {
+        // Set the uploaded file as target text
+        setTargetTextFromUpload(content);
+        
+        // Apply segmentation to source text (same as empty mode)
+        if (sourceInstanceData && sourceInstanceId) {
+          const sourceContent = sourceInstanceData.content || '';
+          
+          // Apply segmentation if available
+          if (sourceSegmentationData && validateSegmentationData(sourceSegmentationData)) {
+            try {
+              const segmentedSourceText = applySegmentation(sourceContent, sourceSegmentationData);
+              setSourceText(
+                sourceInstanceData.id || 'source-instance',
+                sourceInstanceId,
+                segmentedSourceText,
+                'database'
+              );
+            } catch (error) {
+              console.error('Error applying segmentation:', error);
+              setSourceText(
+                sourceInstanceData.id || 'source-instance',
+                sourceInstanceId,
+                sourceContent,
+                'database'
+              );
+            }
+          } else {
+            setSourceText(
+              sourceInstanceData.id || 'source-instance',
+              sourceInstanceId,
+              sourceContent,
+              'database'
+            );
+          }
+        }
+
+        // Update URL parameters
+        handleChangeSearchParams({
+          state: 'upload',
+          tTextId: 'uploaded-file',
+          tInstanceId: 'uploaded-instance'
+        });
+
+        setAnnotationsApplied(true);
+        console.log('✅ File uploaded and segmentation applied');
+      }
+    };
+    
+    reader.onerror = () => {
+      console.error('Error reading file');
+      setLoadingAnnotations(false);
+    };
+    
+    reader.readAsText(file);
+    
+    // Clear the input so the same file can be selected again
+    event.target.value = '';
+  }, [sourceInstanceData, sourceInstanceId, sourceSegmentationData, setTargetTextFromUpload, setSourceText, handleChangeSearchParams, validateSegmentationData, setLoadingAnnotations, setAnnotationsApplied]);
+
   // Handle start empty functionality
   const handleStartEmpty = React.useCallback(() => {
     console.log('=== HANDLE START EMPTY CALLED ===');
+    setLoadingAnnotations(true, 'Applying source segmentation...');
     console.log('Source instance data available:', !!sourceInstanceData);
     console.log('Source instance loading:', isLoadingSourceInstance);
     console.log('Segmentation annotation ID:', sourceSegmentationAnnotationId);
@@ -434,9 +605,9 @@ function TargetSelectionPanel() {
         console.log('Available data:', sourceSegmentationData);
       }
 
-      // Update source text with segmentation
+      // Update source text with segmentation (preserve original sourceTextId)
       setSourceText(
-        sourceInstanceData.id || 'source-instance',
+        sourceTextId || sourceInstanceData.id || 'source-instance',
         sourceInstanceId!,
         segmentedSourceText,
         'database'
@@ -466,10 +637,14 @@ function TargetSelectionPanel() {
       console.log('✅ URL parameters updated');
       console.log('✅ Ready for user input in target editor');
 
+      // Mark annotations as applied
+      setAnnotationsApplied(true);
+
     } catch (error) {
       console.error('Error starting with empty target:', error);
+      setLoadingAnnotations(false);
     }
-  }, [sourceInstanceData, sourceSegmentationData, sourceInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, isLoadingSourceSegmentation, isLoadingSourceInstance, sourceSegmentationAnnotationId, sourceSegmentationError, validateSegmentationData]);
+  }, [sourceInstanceData, sourceSegmentationData, sourceInstanceId, sourceTextId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, isLoadingSourceSegmentation, isLoadingSourceInstance, sourceSegmentationAnnotationId, sourceSegmentationError, validateSegmentationData, setLoadingAnnotations, setAnnotationsApplied]);
 
   // Handle instance selection from dropdown
   const handleInstanceSelection = React.useCallback((instanceId: string) => {
@@ -699,6 +874,7 @@ function TargetSelectionPanel() {
         ) : sourceInstanceId && panelMode === 'empty' ? (
           /* Start Empty Mode */
           <div className="space-y-4">
+            {/* Start Empty Option */}
             <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start space-x-3">
                 <svg className="w-6 h-6 text-blue-600 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -711,14 +887,41 @@ function TargetSelectionPanel() {
                   </p>
                   <button
                     onClick={handleStartEmpty}
-                    disabled={isLoadingSourceInstance || isLoadingSourceSegmentation}
+                    disabled={isLoadingSourceInstance || isLoadingSourceSegmentation || isLoadingAnnotations}
                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {(() => {
-                      const isLoading = isLoadingSourceInstance || isLoadingSourceSegmentation;
-                      return isLoading ? 'Loading...' : 'Start with Empty Target';
-                    })()}
+                    {isLoadingSourceInstance || isLoadingSourceSegmentation || isLoadingAnnotations ? 'Loading...' : 'Start with Empty Target'}
                   </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Upload File Option */}
+            <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <Upload className="w-6 h-6 text-green-600 mt-1" />
+                <div className="flex-1">
+                  <h4 className="text-lg font-medium text-green-900 mb-2">Upload Target File</h4>
+                  <p className="text-sm text-green-700 mb-4">
+                    Upload a text file to use as your target text. Segmentation will be applied to the source text for alignment.
+                  </p>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="file"
+                      accept=".txt,.md"
+                      onChange={handleFileUpload}
+                      disabled={isLoadingSourceInstance || isLoadingSourceSegmentation || isLoadingAnnotations}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoadingSourceInstance || isLoadingSourceSegmentation || isLoadingAnnotations ? 'Loading...' : 'Choose File'}
+                    </label>
+                    <span className="text-sm text-green-600">Supports .txt and .md files</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -739,6 +942,12 @@ function TargetSelectionPanel() {
           </div>
         )}
       </div>
+
+      {/* Loading Overlay */}
+      <LoadingOverlay 
+        isVisible={isLoadingAnnotations} 
+        message={loadingMessage || 'Processing annotations...'} 
+      />
     </div>
   );
 }

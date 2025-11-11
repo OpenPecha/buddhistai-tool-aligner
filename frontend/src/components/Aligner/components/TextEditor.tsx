@@ -35,9 +35,11 @@ function TextEditor({
     isTargetLoaded,
     targetTextId,
     targetLoadType,
-    setTargetTextFromFile
+    setTargetTextFromFile,
+    isLoadingAnnotations,
+    annotationsApplied
   } = useTextSelectionStore();
-  let currentText = editorType === 'source' ? sourceText : targetText;
+  const currentText = editorType === 'source' ? sourceText : targetText;
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
   
   // Track if this target editor was initially empty (to maintain editability)
@@ -63,35 +65,64 @@ function TextEditor({
       });
     }
   }, [editorType, targetTextId, targetLoadType, wasInitiallyEmptyTarget, isFullyEditable, currentText]);
-  // Local UI state - only use root_text if no text has been loaded yet
-  if(!isTextLoaded && (!currentText || currentText === '')){
-    currentText = root_text;
+  // Determine if we should show placeholder text instead of actual content
+  const shouldShowPlaceholder = isLoadingAnnotations || (isTextLoaded && !annotationsApplied);
+  
+  // Local UI state - show placeholder or actual text
+  let displayText = currentText;
+  if (!isTextLoaded && (!currentText || currentText === '')) {
+    displayText = root_text;
+  } else if (shouldShowPlaceholder) {
+    displayText = isLoadingAnnotations 
+      ? 'Loading annotations...\n\nPlease wait while we process the text segmentation.'
+      : 'Preparing text...\n\nAnnotations are being applied to ensure proper alignment.';
   }
-  const [value, setValue] = React.useState(currentText);
+  
+  const [value, setValue] = React.useState(displayText);
   const [currentSelection, setCurrentSelection] = React.useState<TextSelection | null>(null);
 
-  // Update value when store text changes
+  // Update value when store text changes or loading state changes
   React.useEffect(() => {
-    setValue(currentText);
+    let newDisplayText = currentText;
+    if (shouldShowPlaceholder) {
+      if (isLoadingAnnotations) {
+        newDisplayText = 'Loading annotations...\n\nPlease wait while we process the text segmentation.';
+      } else {
+        newDisplayText = 'Preparing text...\n\nAnnotations are being applied to ensure proper alignment.';
+      }
+    }
+    
+    setValue(newDisplayText);
     // Clear current selection when text changes
     setCurrentSelection(null);
     if (onSelectionChange) {
       onSelectionChange.onSelectionClear(editorId);
     }
-  }, [currentText, editorId, onSelectionChange]);
+  }, [currentText, editorId, onSelectionChange, shouldShowPlaceholder, isLoadingAnnotations]);
   
   const onChange = React.useCallback((val: string) => {
     console.log('val:', val);
+    
+    // Don't allow editing when showing placeholder text
+    if (shouldShowPlaceholder) {
+      return;
+    }
+    
     setValue(val);
     
     // If this is a target editor that should be editable, update the store with the new content
     if (editorType === 'target' && (wasInitiallyEmptyTarget || targetLoadType === 'file')) {
       setTargetTextFromFile(val);
     }
-  }, [editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile]);
+  }, [editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile, shouldShowPlaceholder]);
 
   // Handle text selection
   const handleSelectionChange = React.useCallback((selection: EditorSelection) => {
+    // Don't allow selection when showing placeholder text
+    if (shouldShowPlaceholder) {
+      return;
+    }
+    
     if (onSelectionChange) {
       const range = selection.main;
       if (range.from === range.to) {
@@ -117,7 +148,7 @@ function TextEditor({
         onSelectionChange.onTextSelect(textSelection);
       }
     }
-  }, [value, editorId, onSelectionChange, editorType, isSourceLoaded]);
+  }, [value, editorId, onSelectionChange, editorType, isSourceLoaded, shouldShowPlaceholder]);
 
   // Handle key restrictions based on editor type and state
   const handleKeyDown = React.useCallback((event: React.KeyboardEvent) => {

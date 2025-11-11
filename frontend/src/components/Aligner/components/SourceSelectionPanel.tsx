@@ -8,7 +8,7 @@ import { useSearchParams } from 'react-router-dom';
 function SourceSelectionPanel() {
   const {
     sourceTextId, sourceInstanceId,
-    setSourceText
+    setSourceText, setSourceSelection
   } = useTextSelectionStore();
   
   const [selectedTextId, setSelectedTextId] = React.useState<string>(sourceTextId || '');
@@ -56,23 +56,27 @@ function SourceSelectionPanel() {
     setSelectedInstanceId(instanceId);
   }, [selectedTextId]);
 
-  // Watch for instanceData changes and update text content when available
+  // Watch for instanceData changes and update store selection + URL parameters (but don't load text yet)
+  // Text loading will be handled by TargetSelectionPanel when alignment data is available
   React.useEffect(() => {
     if (!instanceData || !selectedInstanceId || !selectedTextId) return;
     
     try {
-      const content = instanceData.content || '';
+      // Set source selection in store (this will make sourceInstanceId available for TargetSelectionPanel)
+      console.log('🔧 Setting source selection:', { textId: selectedTextId, instanceId: selectedInstanceId });
+      setSourceSelection(selectedTextId, selectedInstanceId);
       
-      setSourceText(selectedTextId, selectedInstanceId, content, 'database');
+      // Update URL parameters
       handleChangeSearchParams({
         sTextId: selectedTextId,
         sInstanceId: selectedInstanceId
       });
+      
+      console.log('✅ Source selection updated - TargetSelectionPanel should now show related instances');
     } catch (error) {
-      console.error('Error setting source text content:', error);
-      alert('Failed to load text content. Please try again.');
+      console.error('Error updating source parameters:', error);
     }
-  }, [instanceData, selectedInstanceId, selectedTextId, setSourceText, handleChangeSearchParams]);
+  }, [instanceData, selectedInstanceId, selectedTextId, setSourceSelection, handleChangeSearchParams]);
 
   // Handle creating new text (redirect to cataloger)
   const handleCreateText = React.useCallback(() => {

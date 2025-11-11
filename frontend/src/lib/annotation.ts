@@ -23,8 +23,28 @@ export function getAnnotation (text: string){
  * @returns Segmented text with separators between segments
  */
 export function applySegmentation(text: string, segmentations: Array<{span: {start: number, end: number}}>): string {
+    if (!text) {
+        console.warn('applySegmentation: text is empty or undefined');
+        return '';
+    }
+    
     if (!segmentations || segmentations.length === 0) {
+        console.warn('applySegmentation: segmentations is empty or undefined');
         return text;
+    }
+
+    // Validate segmentations structure
+    for (let i = 0; i < segmentations.length; i++) {
+        const seg = segmentations[i];
+        if (!seg || !seg.span || typeof seg.span.start !== 'number' || typeof seg.span.end !== 'number') {
+            console.error(`applySegmentation: Invalid segmentation at index ${i}:`, seg);
+            throw new Error(`Invalid segmentation structure at index ${i}: expected {span: {start: number, end: number}}`);
+        }
+        
+        if (seg.span.start < 0 || seg.span.end < seg.span.start || seg.span.end > text.length) {
+            console.error(`applySegmentation: Invalid span range at index ${i}:`, seg.span, `text length: ${text.length}`);
+            throw new Error(`Invalid span range at index ${i}: start=${seg.span.start}, end=${seg.span.end}, text length=${text.length}`);
+        }
     }
 
     // Sort segmentations by start position
