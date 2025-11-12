@@ -3,7 +3,7 @@ import { useTexts, useInstance, useTextInstances } from '../../../hooks/useTextD
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { PlusCircle, RotateCcw } from 'lucide-react';
 import { CATALOGER_URL } from '../../../config';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 function SourceSelectionPanel() {
@@ -125,7 +125,7 @@ function SourceSelectionPanel() {
               className='cursor-pointer flex gap-2 items-center px-3 py-2 text-sm rounded transition-colors hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300'
             >
               <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">Reset</span>
+              <Link to="/aligner" className="hidden sm:inline">Reset</Link>
             </button>
           )}
         </div>

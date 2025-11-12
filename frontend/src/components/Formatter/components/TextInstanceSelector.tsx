@@ -3,6 +3,11 @@ import { useTexts, useTextInstances, useInstance, useAnnotation } from '../../..
 import { applySegmentation } from '../../../lib/annotation';
 import type { OpenPechaText, OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
 import type { SegmentAnnotation } from '../types';
+import type { BdrcSearchResult } from '../../Aligner/hooks/uesBDRC';
+import { useBdrcTextSelection } from '../../Aligner/hooks/useBdrcTextSelection';
+import { BdrcSearchPanel } from '../../Aligner/components/BdrcSearchPanel';
+import { SelectedTextDisplay } from '../../Aligner/components/SelectedTextDisplay';
+import { CATALOGER_URL } from '../../../config';
 import './TextInstanceSelector.css';
 
 interface TextInstanceSelectorProps {
@@ -69,11 +74,36 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
+  // BDRC search and selection hooks
+  const {
+    bdrcSearchQuery,
+    setBdrcSearchQuery,
+    selectedBdrcResult,
+    showBdrcResults,
+    setShowBdrcResults,
+    bdrcTextNotFound,
+    isCheckingBdrcText,
+    fetchedTexts,
+    handleBdrcResultSelect: handleBdrcResultSelectBase,
+    handleResetBdrcSelection: handleResetBdrcSelectionBase,
+    hasSelectedText,
+  } = useBdrcTextSelection();
+
   // Fetch texts list
-  const { data: texts, isLoading: isLoadingTexts, error: textsError } = useTexts({limit:100});
+  const { data: texts, isLoading: isLoadingTexts, error: textsError } = useTexts();
+  
+  // Get text ID from BDRC selection
+  const selectedTextIdFromBdrc = useMemo(() => {
+    if (!selectedBdrcResult?.workId) return null;
+    const text = fetchedTexts.find(t => t.bdrc === selectedBdrcResult.workId);
+    return text?.id || null;
+  }, [selectedBdrcResult, fetchedTexts]);
+
+  // Use BDRC text ID if available, otherwise use manually selected text ID
+  const effectiveTextId = selectedTextIdFromBdrc || selectedTextId;
   
   // Fetch instances for selected text
-  const { data: instances, isLoading: isLoadingInstances, error: instancesError } = useTextInstances(selectedTextId);
+  const { data: instances, isLoading: isLoadingInstances, error: instancesError } = useTextInstances(effectiveTextId);
   
   // Fetch selected instance data
   const { data: instanceData, isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
@@ -106,7 +136,11 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
           
           if (Array.isArray(segmentationData)) {
             annotationArray = segmentationData;
+          } else if (segmentationData.data && Array.isArray(segmentationData.data)) {
+            // New API format: { id, type, data: [...] }
+            annotationArray = segmentationData.data as APISegmentationAnnotation[];
           } else if (segmentationData.annotation && Array.isArray(segmentationData.annotation)) {
+            // Legacy format: { annotation: [...] }
             annotationArray = segmentationData.annotation as APISegmentationAnnotation[];
           } else {
             console.warn('Unexpected segmentation data structure:', segmentationData);
@@ -165,10 +199,43 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     } 
   }, [instanceData, segmentationData, selectedInstanceId, isProcessing, processAndLoadText, segmentationAnnotationId, isLoadingAnnotation]);
 
+  // Handle BDRC result selection
+  const handleBdrcResultSelect = useCallback(async (result: BdrcSearchResult) => {
+    const textId = await handleBdrcResultSelectBase(result);
+    if (textId) {
+      setSelectedTextId(textId);
+      setSelectedInstanceId(null);
+      setProcessingError(null);
+      // Clear manual search when BDRC text is selected
+      setSearchQuery('');
+      setShowDropdown(false);
+    }
+  }, [handleBdrcResultSelectBase]);
+
+  // Handle resetting BDRC selection
+  const handleResetBdrcSelection = useCallback(() => {
+    handleResetBdrcSelectionBase();
+    setSelectedTextId(null);
+    setSelectedInstanceId(null);
+    setProcessingError(null);
+  }, [handleResetBdrcSelectionBase]);
+
+  // Handle creating text from BDRC
+  const handleCreateTextFromBdrc = useCallback(() => {
+    if (!selectedBdrcResult?.workId) return;
+    const url = `${CATALOGER_URL}/create?t_id=${selectedBdrcResult.workId}`;
+    window.open(url, '_blank');
+  }, [selectedBdrcResult]);
+
   const handleTextSelect = (textId: string, textTitle?: string) => {
     setSelectedTextId(textId);
     setSelectedInstanceId(null);
     setProcessingError(null);
+    
+    // Reset BDRC selection when manually selecting text
+    if (selectedBdrcResult) {
+      handleResetBdrcSelection();
+    }
     
     // Update search query to show selected text title and hide dropdown
     if (textTitle) {
@@ -232,20 +299,19 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   const isLoading = isLoadingTexts || isLoadingInstances || isLoadingInstance || isLoadingAnnotation || isProcessing;
   const error = textsError || instancesError || instanceError || annotationError || processingError;
 
+  // Determine what to show
+  const shouldShowBdrcSearch = !hasSelectedText && !selectedTextId;
+  const shouldShowSelectedBdrcText = hasSelectedText && selectedTextIdFromBdrc;
+  const shouldShowManualTextSearch = !hasSelectedText && !selectedTextId;
+  const shouldShowInstanceSelector = (hasSelectedText || selectedTextId) && effectiveTextId && !isCheckingBdrcText;
+
   return (
-    <div className="h-full flex flex-col bg-gray-50 border border-gray-200">
+    <div className="h-full flex flex-col bg-gray-50 w-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-white">
-        <h3 className="text-lg font-medium text-gray-900">
-          Select Text & Instance
-        </h3>
-        <p className="text-sm text-gray-600 mt-1">
-          Choose a text and instance to begin formatting with automatic segmentation
-        </p>
-      </div>
+  
 
       {/* Content */}
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
         {/* Error Display */}
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-md">
@@ -255,105 +321,37 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
           </div>
         )}
 
-        {/* Step 1: Text Selection with Live Search */}
-        <div className="space-y-2">
-          <label htmlFor="text-search" className="block text-sm font-medium text-gray-700">
-            Step 1: Select Text
-          </label>
-          
-          {/* Search Input with Dropdown */}
-          <div className="relative" ref={searchRef}>
-            <input
-              id="text-search"
-              type="text"
-              placeholder="Type to search texts by title, ID, language, or type..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-              className="w-full px-3 py-2 pl-10 pr-10 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setShowDropdown(false);
-                  setSelectedTextId(null);
-                  setSelectedInstanceId(null);
-                }}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                title="Clear search"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+        {/* BDRC Search Panel */}
+        {shouldShowBdrcSearch && (
+          <BdrcSearchPanel
+            bdrcSearchQuery={bdrcSearchQuery}
+            setBdrcSearchQuery={setBdrcSearchQuery}
+            showBdrcResults={showBdrcResults}
+            setShowBdrcResults={setShowBdrcResults}
+            bdrcTextNotFound={bdrcTextNotFound}
+            isCheckingBdrcText={isCheckingBdrcText}
+            selectedBdrcResult={selectedBdrcResult}
+            onResultSelect={handleBdrcResultSelect}
+            onCreateText={handleCreateTextFromBdrc}
+          />
+        )}
 
-            {/* Live Search Results Dropdown */}
-            {showDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {isLoadingTexts ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">Loading texts...</div>
-                ) : textsError ? (
-                  <div className="px-3 py-2 text-sm text-red-600">Error loading texts</div>
-                ) : filteredTexts.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">No texts match your search</div>
-                ) : (
-                  filteredTexts.map((text: OpenPechaText) => {
-                    const displayTitle = getDisplayTitle(text.title, text.language) || text.id;
-                    return (
-                      <button
-                        key={text.id}
-                        onClick={() => handleTextSelect(text.id, displayTitle)}
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0"
-                      >
-                        <div className="font-medium text-gray-900">{displayTitle}</div>
-                        <div className="text-xs text-gray-500 flex gap-2">
-                          <span>ID: {text.id}</span>
-                          {text.language && <span>Lang: {text.language}</span>}
-                          {text.type && <span>Type: {text.type}</span>}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            )}
-          </div>
+        {/* Selected BDRC Text Display */}
+        {shouldShowSelectedBdrcText && (
+          <SelectedTextDisplay
+            selectedBdrcResult={selectedBdrcResult}
+            textId={selectedTextIdFromBdrc}
+            onReset={handleResetBdrcSelection}
+          />
+        )}
 
-          {/* Selected Text Info */}
-          {selectedTextId && (
-            <div className="p-2 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">
-                ✓ Selected: <span className="font-medium">{getSelectedTextTitle()}</span>
-              </p>
-            </div>
-          )}
-
-          {/* Search Results Info */}
-          {searchQuery && showDropdown && (
-            <p className="text-xs text-gray-500">
-              {filteredTexts.length} of {texts?.length || 0} texts match "{searchQuery}"
-            </p>
-          )}
-
-          {textsError && (
-            <p className="text-sm text-red-600">
-              Failed to load available texts: {textsError.message}
-            </p>
-          )}
-        </div>
+      
 
         {/* Step 2: Instance Selection Dropdown */}
-        {selectedTextId && (
+        {shouldShowInstanceSelector && (
           <div className="space-y-2">
             <label htmlFor="instance-select" className="block text-sm font-medium text-gray-700">
-              Step 2: Select Instance
+              Select Instance
             </label>
             <div className="flex gap-2 items-center">
               <select
@@ -403,11 +401,11 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
           </div>
         )}
 
-        {/* Step 3: Processing Status */}
+        {/* Processing Status */}
         {selectedInstanceId && instanceData && (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
-              Step 3: Processing Status
+              Processing Status
             </label>
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md space-y-2">
               <div className="flex justify-between text-sm">
@@ -440,6 +438,12 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Segments:</span>
                       <span className="text-gray-900">{segmentationData.length} segments</span>
+                    </div>
+                  )}
+                  {segmentationData.data && Array.isArray(segmentationData.data) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Segments:</span>
+                      <span className="text-gray-900">{segmentationData.data.length} segments</span>
                     </div>
                   )}
                   {segmentationData.annotation && Array.isArray(segmentationData.annotation) && (

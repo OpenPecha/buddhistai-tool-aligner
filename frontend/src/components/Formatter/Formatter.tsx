@@ -152,7 +152,11 @@ function Formatter() {
             
             if (Array.isArray(urlSegmentationData)) {
               annotationArray = urlSegmentationData;
+            } else if (urlSegmentationData.data && Array.isArray(urlSegmentationData.data)) {
+              // New API format: { id, type, data: [...] }
+              annotationArray = urlSegmentationData.data as APISegmentationAnnotation[];
             } else if (urlSegmentationData.annotation && Array.isArray(urlSegmentationData.annotation)) {
+              // Legacy format: { annotation: [...] }
               annotationArray = urlSegmentationData.annotation as APISegmentationAnnotation[];
             } else {
               console.warn('Unexpected segmentation data structure:', urlSegmentationData);
@@ -518,6 +522,7 @@ function Formatter() {
               <SubmitFormat 
                 segmentAnnotations={segmentAnnotations}
                 hasExistingSegmentation={hasExistingSegmentation}
+                instanceId={instanceId}
               />
             </div>
             </div>

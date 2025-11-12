@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:8000';
 export interface BdrcSearchResult {
   workId?: string;
   instanceId?: string;
-  prefLabel?: string;
+  title?: string;
   catalogInfo?: string | null;
   creator?: string | null;
   language?: string | null;

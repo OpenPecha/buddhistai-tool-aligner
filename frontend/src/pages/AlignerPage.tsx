@@ -3,7 +3,7 @@ import Aligner from '../components/Aligner';
 import CatalogerButton from '../components/CatalogerButton';
 import { useTextSelectionStore } from '../stores/textSelectionStore';
 import { RotateCcw } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 function ResetButton() {
   const { sourceInstanceId, targetInstanceId } = useTextSelectionStore();
@@ -47,7 +47,7 @@ function AlignerPage() {
       <header className="bg-white shadow-sm border-b shrink-0">
         <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">Aligner</h1>
+            <Link to="/" className="text-xl font-semibold text-gray-900">Aligner</Link>
             <div className="flex items-center gap-3">
               <ResetButton />
               <CatalogerButton />

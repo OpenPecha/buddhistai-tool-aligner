@@ -1,5 +1,6 @@
 import Formatter from '../components/Formatter/Formatter';
 import CatalogerButton from '../components/CatalogerButton';
+import { Link } from 'react-router-dom';
 
 function FormatterPage() {
   return (
@@ -9,7 +10,7 @@ function FormatterPage() {
         <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
          
-            <h1 className="text-xl font-semibold text-gray-900">Formatter</h1>
+            <Link to="/" className="text-xl font-semibold text-gray-900">Formatter</Link>
             <CatalogerButton />
           </div>
         </div>

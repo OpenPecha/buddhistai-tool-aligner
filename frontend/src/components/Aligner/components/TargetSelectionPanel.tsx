@@ -5,7 +5,7 @@ import { RotateCcw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAnnotation, fetchInstance } from '../../../api/text';
-import { applySegmentation, generateFileSegmentation } from '../../../lib/annotation';
+import { applySegmentation, generateFileSegmentation, extractInstanceSegmentation } from '../../../lib/annotation';
 import LoadingOverlay from './LoadingOverlay';
 import { CATALOGER_URL } from '../../../config';
 
@@ -178,16 +178,20 @@ function TargetSelectionPanel() {
 
   // Apply segmentation when alignment annotation and instance data are available (only in related mode)
   React.useEffect(() => {
-   
-    
-    if (!sourceInstanceData || !targetInstanceData) {
-      console.log('⚠️ Missing instance data, skipping annotation application');
+    // Wait for both instance data to be fully loaded before processing
+    if (!sourceInstanceData || !targetInstanceData || isLoadingSourceInstance || isLoadingTargetInstance) {
+      console.log('⚠️ Missing instance data or still loading, skipping annotation application');
       return;
     }
   
 
+    // Determine loading message based on whether alignment annotation exists
+    const loadingMessage = alignmentAnnotation 
+      ? 'Applying alignment annotations...' 
+      : 'Applying instance segmentation...';
+    
     console.log('🔄 Setting loading state for annotation application');
-    setLoadingAnnotations(true, 'Applying alignment annotations...');
+    setLoadingAnnotations(true, loadingMessage);
     
     try {
       let segmentedSourceText: string;
@@ -292,22 +296,36 @@ function TargetSelectionPanel() {
           segmentedTargetText = targetInstanceData.content || '';
         }
       } else {
-        console.log('⚠️ No alignment annotation available, using file segmentation fallback');
-        // Third case: No alignment annotation available, use file segmentation for both texts
+        console.log('⚠️ No alignment annotation available, using instance segmentation if available');
+        // Third case: No alignment annotation available, use instance segmentation if available
         const sourceContent = sourceInstanceData.content || '';
         const targetContent = targetInstanceData.content || '';
         
-        console.log('📝 Applying file segmentation to source text');
-        const sourceSegmentations = generateFileSegmentation(sourceContent);
-        segmentedSourceText = applySegmentation(sourceContent, sourceSegmentations);
+        // Try to extract segmentation from source instance annotations
+        const sourceInstanceSegmentation = extractInstanceSegmentation(sourceInstanceData.annotations);
+        if (sourceInstanceSegmentation) {
+          console.log('📝 Using source instance segmentation');
+          segmentedSourceText = applySegmentation(sourceContent, sourceInstanceSegmentation);
+        } else {
+          console.log('📝 No source instance segmentation, using file segmentation fallback');
+          const sourceSegmentations = generateFileSegmentation(sourceContent);
+          segmentedSourceText = applySegmentation(sourceContent, sourceSegmentations);
+        }
         
-        console.log('📝 Applying file segmentation to target text');
-        const targetSegmentations = generateFileSegmentation(targetContent);
-        segmentedTargetText = applySegmentation(targetContent, targetSegmentations);
+        // Try to extract segmentation from target instance annotations
+        const targetInstanceSegmentation = extractInstanceSegmentation(targetInstanceData.annotations);
+        if (targetInstanceSegmentation) {
+          console.log('📝 Using target instance segmentation');
+          segmentedTargetText = applySegmentation(targetContent, targetInstanceSegmentation);
+        } else {
+          console.log('📝 No target instance segmentation, using file segmentation fallback');
+          const targetSegmentations = generateFileSegmentation(targetContent);
+          segmentedTargetText = applySegmentation(targetContent, targetSegmentations);
+        }
         
-        console.log('📊 File segmentation results:', {
-          sourceSegments: sourceSegmentations.length,
-          targetSegments: targetSegmentations.length,
+        console.log('📊 Segmentation results:', {
+          sourceHasInstanceSegmentation: !!sourceInstanceSegmentation,
+          targetHasInstanceSegmentation: !!targetInstanceSegmentation,
           sourceLinesAfterSegmentation: segmentedSourceText.split('\n').length,
           targetLinesAfterSegmentation: segmentedTargetText.split('\n').length
         });
@@ -370,7 +388,7 @@ function TargetSelectionPanel() {
       setLoadingAnnotations(false);
       setAnnotationsApplied(true);
     }
-  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
+  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, isLoadingSourceInstance, isLoadingTargetInstance, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
   
   // Load source text without segmentation when no target is selected or in empty mode
   React.useEffect(() => {

@@ -152,3 +152,38 @@ export function generateFileSegmentation(text: string): Array<{span: {start: num
     
     return segments;
 }
+
+/**
+ * Extract segmentation annotations from instance annotations
+ * @param annotations - Instance annotations object
+ * @returns Array of segmentation annotations with span information, or null if not found
+ */
+export function extractInstanceSegmentation(annotations: { [key: string]: unknown[] } | null | undefined): Array<{span: {start: number, end: number}}> | null {
+    if (!annotations || typeof annotations !== 'object') {
+        return null;
+    }
+
+    // Look for segmentation annotations
+    const segmentationKey = Object.keys(annotations).find(key => 
+        key.includes('segmentation') || key.includes('segment')
+    );
+
+    if (!segmentationKey || !Array.isArray(annotations[segmentationKey])) {
+        return null;
+    }
+
+    const rawSegmentations = annotations[segmentationKey] as unknown[];
+    
+    // Validate and convert segmentation data
+    const segmentations = rawSegmentations
+        .filter((seg): seg is {span: {start: number, end: number}} => {
+            if (!seg || typeof seg !== 'object') return false;
+            const segObj = seg as any;
+            return 'span' in segObj && 
+                   typeof segObj.span === 'object' &&
+                   typeof segObj.span.start === 'number' &&
+                   typeof segObj.span.end === 'number';
+        });
+
+    return segmentations.length > 0 ? segmentations : null;
+}

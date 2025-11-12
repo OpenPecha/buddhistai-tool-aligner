@@ -69,6 +69,78 @@ export const fetchAnnotation = async (id: string): Promise<Annotations> => {
   return response.json();
 };
 
+export const createAnnotation = async (
+  inferenceId: string,
+  annotationData: {
+    type: string;
+    target_manifestation_id: string;
+    target_annotation: Array<{
+      span: {
+        start: number;
+        end: number;
+      };
+      index: number;
+    }>;
+    alignment_annotation: Array<{
+      span: {
+        start: number;
+        end: number;
+      };
+      index: number;
+      alignment_index: number[];
+    }>;
+  }
+): Promise<Annotations> => {
+  const response = await fetch(`${API_URL}/v2/annotations/${inferenceId}/annotation`, {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(annotationData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.details || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+// API function for creating table of contents annotation
+// Uses the same endpoint pattern as createAnnotation but for table_of_contents type
+export const createTableOfContentsAnnotation = async (
+  instanceId: string,
+  annotationData: {
+    type: string;
+    annotation: Array<{
+      id: string;
+      title: string;
+      segments: string[];
+    }>;
+  }
+): Promise<Annotations> => {
+  const response = await fetch(`${API_URL}/v2/annotations/${instanceId}/annotation`, {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(annotationData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.details || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+
+
+
 // Real API function for creating text instances
 export const createTextInstance = async (textId: string, instanceData: {
   metadata?: {
