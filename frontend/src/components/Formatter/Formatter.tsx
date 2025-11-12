@@ -23,8 +23,10 @@ import { applySegmentation } from '../../lib/annotation';
 import type { SegmentationAnnotation as APISegmentationAnnotation } from '../../types/text';
 import SubmitFormat from './components/SubmitFormat.tsx';
 import './Formatter.css';
+import { useTranslation } from 'react-i18next';
 
 function Formatter() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [showTOC, setShowTOC] = useState(true);
@@ -384,7 +386,7 @@ function Formatter() {
           <button
             onClick={() => setShowTOC(true)}
             className="w-8 shrink-0 bg-gray-100 hover:bg-gray-200 border-r border-gray-300 flex items-center justify-center transition-colors"
-            title="Show Table of Contents"
+            title={t('formatter.showTableOfContents')}
           >
             <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

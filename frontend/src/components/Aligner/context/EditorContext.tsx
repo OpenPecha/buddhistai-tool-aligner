@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import type { SentenceMapping } from './types';
 import { EditorContext, type EditorContextValue, type ExternalAlignmentData } from './context';

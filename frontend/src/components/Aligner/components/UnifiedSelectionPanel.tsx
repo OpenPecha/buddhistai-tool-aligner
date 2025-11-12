@@ -299,6 +299,164 @@ function UnifiedSelectionPanel() {
       
       return;
     }
+    if (hasAlignment) {
+      // Get the annotation ID from related instances for the selected instance
+      // Get the alignment annotation from fetchAnnotation
+      // Apply the source and target alignment on source and target text 
+      // Load the source and target on editor
+      
+      if (!sourceInstanceId) {
+        console.error('Source instance ID is required');
+        return;
+      }
+
+      setLoadingAnnotations(true, 'Fetching alignment annotation...');
+
+      try {
+        // Find the selected instance in related instances
+        const selectedInstance = relatedInstances.find(instance => 
+          (instance.instance_id || instance.id) === instanceId
+        );
+        
+        if (!selectedInstance) {
+          console.error('Selected instance not found in related instances');
+          setLoadingAnnotations(false);
+          return;
+        }
+
+        // Get annotation ID from the selected instance
+        let annotationId: string | null = null;
+        if ('annotation' in selectedInstance && typeof selectedInstance.annotation === 'string') {
+          annotationId = selectedInstance.annotation;
+        } else if (Array.isArray(selectedInstance.annotations) && selectedInstance.annotations[0]?.annotation_id) {
+          annotationId = selectedInstance.annotations[0].annotation_id;
+        }
+
+        if (!annotationId) {
+          console.error('No alignment annotation ID found for selected instance');
+          setLoadingAnnotations(false);
+          return;
+        }
+
+        setSelectedAnnotationId(annotationId);
+
+        // Fetch alignment annotation and both instances in parallel
+        const [alignmentAnnotationData, sourceInstanceData, targetInstanceData] = await Promise.all([
+          fetchAnnotation(annotationId),
+          fetchInstance(sourceInstanceId),
+          fetchInstance(instanceId)
+        ]);
+
+        // Extract alignment data from annotation response
+        interface AlignmentAnnotationData {
+          alignment_annotation: Array<{
+            id: string;
+            span: {
+              start: number;
+              end: number;
+            };
+            index: number;
+            alignment_index: number[];
+          }>;
+          target_annotation: Array<{
+            id: string;
+            span: {
+              start: number;
+              end: number;
+            };
+            index: number;
+          }>;
+        }
+
+        interface AlignmentAnnotationResponse {
+          id: string;
+          type: string;
+          data: AlignmentAnnotationData;
+        }
+
+        const annotationData = (alignmentAnnotationData as unknown as AlignmentAnnotationResponse).data;
+
+        if (!annotationData?.target_annotation || !Array.isArray(annotationData.target_annotation) ||
+            !annotationData?.alignment_annotation || !Array.isArray(annotationData.alignment_annotation)) {
+          console.error('Invalid alignment annotation structure');
+          setLoadingAnnotations(false);
+          return;
+        }
+
+        // Get text content
+        const sourceContent = sourceInstanceData.content || '';
+        const targetContent = targetInstanceData.content || '';
+
+        // Apply target_annotation segmentation to source text
+        const segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
+
+        // Build target segmentation from alignment_annotation
+        const maxAlignmentIndex = Math.max(
+          ...annotationData.target_annotation.map(ann => ann.index),
+          ...annotationData.alignment_annotation.flatMap(ann => ann.alignment_index),
+          0
+        );
+
+        const targetSegments: Array<{span: {start: number, end: number}}> = [];
+        let currentPos = 0;
+
+        for (let i = 0; i <= maxAlignmentIndex; i++) {
+          const alignmentForThisIndex = annotationData.alignment_annotation.find(ann => 
+            ann.alignment_index.includes(i)
+          );
+          
+          if (alignmentForThisIndex) {
+            targetSegments.push({
+              span: alignmentForThisIndex.span
+            });
+            currentPos = Math.max(currentPos, alignmentForThisIndex.span.end);
+          } else {
+            // Empty segment for unaligned positions
+            targetSegments.push({
+              span: {
+                start: currentPos,
+                end: currentPos
+              }
+            });
+          }
+        }
+
+        // Apply target segmentation to target text
+        const segmentedTargetText = applySegmentation(targetContent, targetSegments);
+
+        // Load the source and target on editor
+        setSourceText(
+          sourceTextId || sourceInstanceData.id || 'source-instance',
+          sourceInstanceId,
+          segmentedSourceText,
+          'database'
+        );
+
+        setTargetText(
+          `related-${instanceId}`,
+          instanceId,
+          segmentedTargetText,
+          'database'
+        );
+
+        setAnnotationsApplied(true);
+        setLoadingAnnotations(false);
+
+        // Update search params
+        handleChangeSearchParams({
+          tTextId: `related-${instanceId}`,
+          tInstanceId: instanceId
+        });
+
+        setSelectedTargetInstanceId(instanceId);
+      } catch (error) {
+        console.error('Error processing alignment annotation:', error);
+        setLoadingAnnotations(false);
+        setAnnotationsApplied(true);
+      }
+      
+      return;
+    }
     
     // If it has alignment then do the current workflow
     const selectedInstance = relatedInstances.find(instance => 

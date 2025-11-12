@@ -3,6 +3,7 @@ import { useFormatterWithTextRetrieval, useTextFromInstance } from '../../../hoo
 import SegmentedTextDisplay from './SegmentedTextDisplay';
 import SegmentTOC from './SegmentTOC';
 import './TextInstanceLoader.css';
+import { useTranslation } from 'react-i18next';
 
 interface TextInstanceLoaderProps {
   onTextLoad?: (instanceId: string) => void;
@@ -11,6 +12,7 @@ interface TextInstanceLoaderProps {
 export const TextInstanceLoader: React.FC<TextInstanceLoaderProps> = ({
   onTextLoad
 }) => {
+  const { t } = useTranslation();
   const [inputInstanceId, setInputInstanceId] = useState('');
   const [showTOC, setShowTOC] = useState(true);
 
@@ -50,14 +52,14 @@ export const TextInstanceLoader: React.FC<TextInstanceLoaderProps> = ({
     <div className="text-instance-loader">
       {/* Header with instance loader */}
       <div className="loader-header">
-        <h2>Text Instance Loader</h2>
+        <h2>{t('formatter.textInstanceLoader')}</h2>
         <div className="instance-input-group">
           <input
             type="text"
             value={inputInstanceId}
             onChange={(e) => setInputInstanceId(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Enter instance ID..."
+            placeholder={t('formatter.enterInstanceId')}
             className="instance-input"
             disabled={isLoading}
           />
@@ -66,7 +68,7 @@ export const TextInstanceLoader: React.FC<TextInstanceLoaderProps> = ({
             disabled={!inputInstanceId.trim() || isLoading}
             className="load-btn"
           >
-            {isLoading ? 'Loading...' : 'Load Text'}
+            {isLoading ? t('formatter.loading') : t('formatter.loadText')}
           </button>
         </div>
       </div>
@@ -74,7 +76,7 @@ export const TextInstanceLoader: React.FC<TextInstanceLoaderProps> = ({
       {/* Error display */}
       {error && (
         <div className="error-banner">
-          <strong>Error:</strong> {error instanceof Error ? error.message : String(error)}
+          <strong>{t('common.error')}:</strong> {error instanceof Error ? error.message : String(error)}
         </div>
       )}
 

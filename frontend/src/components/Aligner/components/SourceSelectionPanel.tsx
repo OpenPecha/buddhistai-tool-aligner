@@ -5,8 +5,10 @@ import { PlusCircle, RotateCcw } from 'lucide-react';
 import { CATALOGER_URL } from '../../../config';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 function SourceSelectionPanel() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const {
     sourceTextId, sourceInstanceId,
@@ -111,21 +113,21 @@ function SourceSelectionPanel() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium text-gray-900">
-              Source Text
+              {t('aligner.sourceText')}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Select a text from the list, enter your own text, or create a new one
+              {t('aligner.selectSourceText')}
             </p>
           </div>
           {/* Reset button - show when there is a source selection */}
           {sourceInstanceId && (
             <button 
-              title="Reset source text selection" 
+              title={t('aligner.resetSourceTextSelection')} 
               onClick={handleReset} 
               className='cursor-pointer flex gap-2 items-center px-3 py-2 text-sm rounded transition-colors hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300'
             >
               <RotateCcw className="w-4 h-4" />
-              <Link to="/aligner" className="hidden sm:inline">Reset</Link>
+              <Link to="/aligner" className="hidden sm:inline">{t('common.reset')}</Link>
             </button>
           )}
         </div>
@@ -136,7 +138,7 @@ function SourceSelectionPanel() {
         {/* Step 1: Text Selection Dropdown */}
         <div className="space-y-2">
           <label htmlFor="source-text-select" className="block text-sm font-medium text-gray-700">
-            Step 1: Select Source Text
+            {t('aligner.step1SelectSourceText')}
           </label>
           <select
             id="source-text-select"
@@ -146,9 +148,9 @@ function SourceSelectionPanel() {
           >
             <option value="">
               {(() => {
-                if (isLoadingTexts) return 'Loading texts...';
-                if (textsError) return 'Error loading texts';
-                return 'Choose a text...';
+                if (isLoadingTexts) return t('aligner.loadingTexts');
+                if (textsError) return t('aligner.errorLoadingTexts');
+                return t('aligner.chooseText');
               })()}
             </option>
             {availableTexts.map((text) => (
@@ -160,7 +162,7 @@ function SourceSelectionPanel() {
           </select>
           {textsError && (
             <p className="text-sm text-red-600">
-              Failed to load available texts: {textsError.message}
+              {t('aligner.failedToLoadTexts')}: {textsError.message}
             </p>
           )}
         </div>
@@ -169,7 +171,7 @@ function SourceSelectionPanel() {
         {selectedTextId && (
           <div className="space-y-2">
             <label htmlFor="source-instance-select" className="block text-sm font-medium text-gray-700">
-              Step 2: Select Instance
+              {t('aligner.step2SelectInstance')}
             </label>
             <div className="flex gap-2 items-center">
               <select
@@ -181,10 +183,10 @@ function SourceSelectionPanel() {
               >
                 <option value="">
                   {(() => {
-                    if (isLoadingInstances) return 'Loading instances...';
-                    if (instancesError) return 'Error loading instances';
-                    if (availableInstances?.length === 0) return 'No instances found';
-                    return 'Choose an instance...';
+                    if (isLoadingInstances) return t('aligner.loadingInstances');
+                    if (instancesError) return t('aligner.errorLoadingInstances');
+                    if (availableInstances?.length === 0) return t('common.empty');
+                    return t('aligner.chooseInstance');
                   })()}
                 </option>
                 {availableInstances.map((instance) => {
@@ -220,11 +222,11 @@ function SourceSelectionPanel() {
             </div>
             {instancesError && (
               <p className="text-sm text-red-600">
-                Failed to load available instances: {instancesError.message}
+                {t('aligner.failedToLoadInstances')}: {instancesError.message}
               </p>
             )}
             {instanceError && (
-              <p className="text-sm text-red-600">Failed to load instance: {instanceError.message}</p>
+              <p className="text-sm text-red-600">{t('aligner.failedToLoadInstances')}: {instanceError.message}</p>
             )}
           </div>
         )}

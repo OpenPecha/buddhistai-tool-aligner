@@ -1,24 +1,27 @@
-// React import removed as it's not needed
-import { useSearchParams } from 'react-router-dom';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useQuery } from '@tanstack/react-query';
 import { fetchInstance } from '../../../api/text';
 import { useEditorContext } from '../context';
+import { useTranslation } from 'react-i18next';
 
 function TextNavigationBar() {
-  const { clearAllSelections } = useTextSelectionStore();
+  const { t } = useTranslation();
+  const { 
+    clearAllSelections,
+    sourceInstanceId: selectedSourceInstanceId,
+    targetInstanceId: selectedTargetInstanceId,
+    sourceLoadType,
+    targetLoadType,
+    isSourceLoaded,
+    isTargetLoaded
+  } = useTextSelectionStore();
   const { isScrollSyncEnabled, setScrollSyncEnabled} = useEditorContext();
-  const [searchParams] = useSearchParams();
 
-  const selectedSourceInstanceId = searchParams.get('sInstanceId');
-  const selectedTargetInstanceId = searchParams.get('tInstanceId');
-  const targetState = searchParams.get('state');
-
-  // Fetch source instance details
+  // Fetch source instance details (only for database-loaded texts)
   const { data: sourceInstanceData } = useQuery({
     queryKey: ['sourceInstanceNav', selectedSourceInstanceId],
     queryFn: () => fetchInstance(selectedSourceInstanceId!),
-    enabled: Boolean(selectedSourceInstanceId),
+    enabled: Boolean(selectedSourceInstanceId) && sourceLoadType === 'database',
     refetchInterval:false,
     refetchOnWindowFocus:false,
     refetchOnMount:false,
@@ -26,22 +29,22 @@ function TextNavigationBar() {
     refetchIntervalInBackground:false,
   });
 
-  // Fetch target instance details (skip if in empty state)
+  // Fetch target instance details (only for database-loaded texts)
   const { data: targetInstanceData } = useQuery({
     queryKey: ['targetInstanceNav', selectedTargetInstanceId],
     queryFn: () => fetchInstance(selectedTargetInstanceId!),
+    enabled: Boolean(selectedTargetInstanceId) && targetLoadType === 'database',
     refetchInterval:false,
     refetchOnWindowFocus:false,
     refetchOnMount:false,
     refetchOnReconnect:false,
     refetchIntervalInBackground:false,
-    enabled: Boolean(selectedTargetInstanceId) && targetState !== 'empty'
   });
 
   // Helper function to get display name from instance data
   const getInstanceDisplayName = (instanceData: unknown, instanceId: string | null) => {
-    if (!instanceData && !instanceId) return 'Not selected';
-    if (!instanceData) return `Loading... (${instanceId})`; // Show loading state
+    if (!instanceData && !instanceId) return t('common.notSelected');
+    if (!instanceData) return `${t('common.loading')} (${instanceId})`; // Show loading state
     
     // Try to get a meaningful title from different possible structures
     const data = instanceData as Record<string, unknown>;
@@ -108,15 +111,19 @@ function TextNavigationBar() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Source:</span>
+            <span className="text-sm font-medium text-gray-700">{t('aligner.source')}:</span>
             <div className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
-              {getInstanceDisplayName(sourceInstanceData, selectedSourceInstanceId)}
+              {!isSourceLoaded || sourceLoadType === 'file' ? 
+                (sourceLoadType === 'file' ? t('aligner.sourceText') : t('common.notSelected')) : 
+                getInstanceDisplayName(sourceInstanceData, selectedSourceInstanceId)}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Target:</span>
+            <span className="text-sm font-medium text-gray-700">{t('aligner.target')}:</span>
             <div className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
-              {targetState === 'empty' ? 'Empty Target File' : getInstanceDisplayName(targetInstanceData, selectedTargetInstanceId)}
+              {!isTargetLoaded || targetLoadType === 'file' ? 
+                (targetLoadType === 'file' ? t('aligner.targetText') : t('aligner.emptyTargetFile')) : 
+                getInstanceDisplayName(targetInstanceData, selectedTargetInstanceId)}
             </div>
           </div>
         </div>
@@ -134,7 +141,7 @@ function TextNavigationBar() {
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             />
             <span className="select-none font-medium">
-              {isScrollSyncEnabled ? '🔗 Smart Sync (Alignment-aware)' : 'Smart Sync'}
+              {isScrollSyncEnabled ? t('aligner.smartSyncEnabled') : t('aligner.smartSync')}
             </span>
           </label>
           
@@ -145,7 +152,7 @@ function TextNavigationBar() {
             onClick={handleReset} 
             className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
           >
-            Reset
+            {t('common.reset')}
           </button>
         </div>
       </div>

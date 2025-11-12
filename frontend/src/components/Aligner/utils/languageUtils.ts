@@ -9,6 +9,15 @@ export function getLanguageFromCode(languageCode: string): string {
     'ru': 'Russian',
     'zh': 'Chinese',
     'bo': 'Tibetan',
+    'sa': 'Sanskrit', 
+    'hi': 'Hindi',
+    'ne': 'Nepali',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'vi': 'Vietnamese',
+    'th': 'Thai',
+    'id': 'Indonesian',
+    'ms': 'Malay',
   };
   const code = languageCode?.trim()?.toLowerCase() || '';
   return languageCodes[code] || languageCode;

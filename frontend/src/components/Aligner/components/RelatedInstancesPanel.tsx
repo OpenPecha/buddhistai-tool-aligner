@@ -196,18 +196,13 @@ export function RelatedInstancesPanel({
                   <h4 className={`font-bold mb-1 ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
                     {title}
                   </h4>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex w-full flex-wrap gap-1 mt-2 justify-between">
                     {language && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">
-                        {getLanguageFromCode(language)}
+                      <span className="text-xs px-2 py-0.5 capitalize rounded bg-purple-100 text-purple-700 font-medium">
+                        {getLanguageFromCode(language)}-{relationship.replace(/[[\]]/g, '')}
                       </span>
                     )}
-                    {relationship && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
-                        {relationship.replace(/[[\]]/g, '')}
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2 flex-1">
+                  
                       {!hasAlignment && (
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 font-medium">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +211,6 @@ export function RelatedInstancesPanel({
                           Not Aligned
                         </span>
                       )}
-                    </div>
                   </div>
                 </button>
               );

@@ -62,7 +62,7 @@ function AlignerContent() {
           <UnifiedSelectionPanel />
         </div>
       ) : showEditors ? (
-        <div className="flex-1 min-h-0 container mx-auto">
+        <div className="flex-1 w-full">
           <PanelGroup direction="horizontal" className="h-full">
             {/* Source Editor Panel */}
             <Panel 
