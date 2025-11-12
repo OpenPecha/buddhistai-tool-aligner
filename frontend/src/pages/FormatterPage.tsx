@@ -10,7 +10,9 @@ function FormatterPage() {
         <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
          
-            <Link to="/" className="text-xl font-semibold text-gray-900">Formatter</Link>
+            <Link to="/" className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <img src="/img/icon.png" alt="Formatter" className="w-6 h-6" />
+          Formatter</Link>
             <CatalogerButton />
           </div>
         </div>
