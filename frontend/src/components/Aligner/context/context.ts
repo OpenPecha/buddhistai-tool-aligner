@@ -33,6 +33,7 @@ export interface EditorContextValue {
   generateSentenceMappings: () => SentenceMapping[];
   syncScrollToLine: (fromEditor: 'source' | 'target', lineNumber: number) => void;
   syncToClickedLine: (clickPosition: number, fromEditor: 'source' | 'target') => void;
+  syncLineSelection: (fromEditor: 'source' | 'target', lineNumber: number) => void;
   isScrollSyncing: React.RefObject<boolean>;
   isScrollSyncEnabled: boolean;
   setScrollSyncEnabled: (enabled: boolean) => void;

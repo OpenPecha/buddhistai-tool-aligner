@@ -330,6 +330,51 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
     }
   }, [isScrollSyncEnabled, generateSentenceMappings, externalAlignmentData]);
 
+  // Line selection synchronization function
+  const syncLineSelection = useCallback((fromEditor: 'source' | 'target', lineNumber: number) => {
+    if (!isScrollSyncEnabled || isScrollSyncing.current) return; // Check if sync is enabled and prevent infinite loop
+    
+    isScrollSyncing.current = true;
+    
+    try {
+      const targetEditor = fromEditor === 'source' ? targetEditorRef.current : sourceEditorRef.current;
+      
+      if (targetEditor?.view) {
+        const doc = targetEditor.view.state.doc;
+        const totalLines = doc.lines;
+        
+        // Ensure line number is within bounds
+        const clampedLineNumber = Math.max(1, Math.min(lineNumber, totalLines));
+        
+        // Get the position of the line
+        const line = doc.line(clampedLineNumber);
+        const lineStart = line.from;
+        const lineEnd = line.to;
+        
+        // Create a selection for the entire line
+        const selection = EditorSelection.single(lineStart, lineEnd);
+        
+        // Apply the selection and scroll to it
+        const scrollEffect = EditorView.scrollIntoView(lineStart, {
+          y: 'center', // Center the line in viewport
+          yMargin: 50
+        });
+        
+        targetEditor.view.dispatch({
+          selection,
+          effects: [scrollEffect]
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing line selection:', error);
+    } finally {
+      // Reset the flag after a short delay to allow the selection to complete
+      setTimeout(() => {
+        isScrollSyncing.current = false;
+      }, 100);
+    }
+  }, [isScrollSyncEnabled]);
+
   const value: EditorContextValue = useMemo(() => ({
     sourceEditorRef,
     targetEditorRef,
@@ -338,13 +383,14 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
     generateSentenceMappings,
     syncScrollToLine,
     syncToClickedLine,
+    syncLineSelection,
     isScrollSyncing,
     isScrollSyncEnabled,
     setScrollSyncEnabled,
     externalAlignmentData,
     setExternalAlignmentData,
     loadAlignmentData,
-  }), [getSourceContent, getTargetContent, generateSentenceMappings, syncScrollToLine, syncToClickedLine, isScrollSyncEnabled, externalAlignmentData, loadAlignmentData]);
+  }), [getSourceContent, getTargetContent, generateSentenceMappings, syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncEnabled, externalAlignmentData, loadAlignmentData]);
 
   return (
     <EditorContext.Provider value={value}>

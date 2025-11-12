@@ -25,7 +25,7 @@ function TextEditor({
   mappings = []
 }: TextEditorProps) {
   // Editor context for scroll synchronization
-  const { syncScrollToLine, syncToClickedLine, isScrollSyncing } = useEditorContext();
+  const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing } = useEditorContext();
   
   // Zustand store
   const {
@@ -137,6 +137,28 @@ function TextEditor({
     }
   }, [value, editorId, onSelectionChange, editorType, isSourceLoaded, shouldShowPlaceholder]);
 
+  // Handle cursor position changes for line synchronization
+  const handleCursorChange = React.useCallback((view: EditorView) => {
+    if (shouldShowPlaceholder || isScrollSyncing.current) {
+      return;
+    }
+    
+    try {
+      const selection = view.state.selection.main;
+      // Only sync if it's a cursor position (not a text selection)
+      if (selection.from === selection.to) {
+        const doc = view.state.doc;
+        const line = doc.lineAt(selection.from);
+        const lineNumber = line.number;
+        
+        // Trigger line selection synchronization
+        syncLineSelection(editorType, lineNumber);
+      }
+    } catch (error) {
+      console.error('Error handling cursor change:', error);
+    }
+  }, [editorType, syncLineSelection, shouldShowPlaceholder, isScrollSyncing]);
+
   // Handle key restrictions based on editor type and state
   const handleKeyDown = React.useCallback((event: React.KeyboardEvent) => {
     // If fully editable (empty target), allow all keys
@@ -178,7 +200,7 @@ function TextEditor({
       // Find the line number at the top of the viewport
       const topLine = doc.lineAt(viewport.from);
       const lineNumber = topLine.number;
-      
+      console.log('lineNumber', lineNumber);
       // Only sync if the line number has changed significantly (avoid micro-scrolls)
       if (Math.abs(lineNumber - lastScrollLineRef.current) >= 1) {
         lastScrollLineRef.current = lineNumber;
@@ -253,6 +275,41 @@ function TextEditor({
     });
   }, [handleClick]);
 
+  // Create line number click synchronization extension
+  const lineNumberClickExtension = React.useMemo(() => {
+    return EditorView.domEventHandlers({
+      click: (event) => {
+        // Check if the click was on a line number
+        const target = event.target as HTMLElement;
+        if (target?.classList.contains('cm-lineNumbers')) {
+          // Get the line number from the clicked element
+          const lineNumberText = target.textContent;
+          if (lineNumberText) {
+            const lineNumber = Number.parseInt(lineNumberText.trim(), 10);
+            if (!Number.isNaN(lineNumber) && lineNumber > 0) {
+              // Trigger line selection synchronization
+              syncLineSelection(editorType, lineNumber);
+            }
+          }
+        }
+        return false; // Don't prevent default click behavior
+      }
+    });
+  }, [editorType, syncLineSelection]);
+
+  // Create cursor position synchronization extension
+  const cursorSyncExtension = React.useMemo(() => {
+    return EditorView.updateListener.of((update) => {
+      // Only handle selection changes, not other updates
+      if (update.selectionSet && !update.transactions.some(tr => tr.isUserEvent('input'))) {
+        // Delay the cursor change handling to avoid conflicts with text selection
+        setTimeout(() => {
+          handleCursorChange(update.view);
+        }, 50);
+      }
+    });
+  }, [handleCursorChange]);
+
   return (
     <div className="relative h-full editor-container overflow-hidden">
    
@@ -292,7 +349,11 @@ function TextEditor({
             // Scroll synchronization
             scrollSyncExtension,
             // Click synchronization
-            clickSyncExtension
+            clickSyncExtension,
+            // Line number click synchronization
+            lineNumberClickExtension,
+            // Cursor position synchronization
+            cursorSyncExtension
           ]}
         />
         

@@ -66,6 +66,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       sourceText: content,
       isSourceLoaded: true,
       sourceLoadType: loadType,
+      annotationsApplied: false, // Reset annotations state when new text is loaded
     }),
     
   setTargetText: (textId: string, instanceId: string, content: string, loadType: 'database' | 'file' = 'database') =>
@@ -76,6 +77,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       isTargetLoaded: true,
       targetLoadType: loadType,
       targetType: loadType === 'database' ? 'translation' : null, // Auto-set to translation for database texts
+      annotationsApplied: false, // Reset annotations state when new text is loaded
     }),
 
   setSourceTextFromFile: (content: string) =>
@@ -85,6 +87,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       sourceText: content,
       isSourceLoaded: true,
       sourceLoadType: 'file',
+      annotationsApplied: true, // File uploads don't need annotation processing
     }),
 
   setTargetTextFromFile: (content: string) =>
@@ -95,6 +98,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       isTargetLoaded: true,
       targetLoadType: 'file',
       targetType: null, // No auto-selection for file uploads
+      annotationsApplied: true, // File uploads don't need annotation processing
     }),
 
   setTargetTextFromUpload: (content: string) =>
@@ -105,6 +109,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       isTargetLoaded: true,
       targetLoadType: 'file',
       targetType: null, // User will select type
+      annotationsApplied: true, // File uploads don't need annotation processing
     }),
 
   setSourceSelection: (textId: string, instanceId: string) =>

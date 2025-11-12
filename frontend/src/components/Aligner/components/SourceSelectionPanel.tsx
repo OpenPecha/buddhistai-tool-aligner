@@ -4,8 +4,10 @@ import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { PlusCircle, RotateCcw } from 'lucide-react';
 import { CATALOGER_URL } from '../../../config';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 function SourceSelectionPanel() {
+  const queryClient = useQueryClient();
   const {
     sourceTextId, sourceInstanceId,
     setSourceText, setSourceSelection
@@ -98,7 +100,9 @@ function SourceSelectionPanel() {
       prev.delete('sInstanceId');
       return prev;
     });
-  }, [setSearchParams]);
+    
+    // Invalidate all queries to refresh data
+  }, [setSearchParams, queryClient]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50 border border-gray-200">

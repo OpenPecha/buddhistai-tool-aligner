@@ -86,10 +86,10 @@ export const transformMappingsToAPI = (
     index,
     alignment_index: [index]
   }));
-
+  const contentWithoutNewlines = targetContent.replace(/\n/g, '');
   return {
     language: metadata.language,
-    content: targetContent,
+    content: contentWithoutNewlines,
     title: metadata.title,
     author: metadata.author,
     category_id: metadata.category_id,

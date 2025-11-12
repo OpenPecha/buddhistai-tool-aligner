@@ -82,3 +82,10 @@ export interface TOCEntry {
   title: string;
   segmentation: SegmentAnnotation[];
 }
+
+export interface DragState {
+  isDragging: boolean;
+  draggedNodeId: string | null;
+  dragOverNodeId: string | null;
+  dropPosition: 'before' | 'after' | 'inside' | null;
+}
