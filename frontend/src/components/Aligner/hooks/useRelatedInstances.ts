@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchRelatedInstances } from '../../../api/instances';
 
-interface RelatedInstance {
+export interface RelatedInstance {
   // Support both API response formats
   id?: string;
   instance_id?: string;
@@ -46,11 +46,7 @@ export const useRelatedInstances = (
       }
       return fetchRelatedInstances(instanceId);
     },
-    refetchInterval:false,
     refetchOnWindowFocus:false,
-    refetchOnMount:false,
-    refetchOnReconnect:false,
-    refetchIntervalInBackground:false,
     enabled: Boolean(instanceId) && (options.enabled !== false),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,

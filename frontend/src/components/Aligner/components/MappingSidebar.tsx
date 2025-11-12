@@ -74,7 +74,6 @@ const MappingSidebar: React.FC<MappingSidebarProps> = ({
       
       // Transform mappings to API format
       const publishData = transformMappingsToAPI(sentenceMappings, targetContent, metadata);
-      
       // Call appropriate API based on target type
       let result;
       if (targetType === 'translation') {

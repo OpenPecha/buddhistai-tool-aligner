@@ -42,8 +42,15 @@ const PublishForm: React.FC<PublishFormProps> = ({
   const [selectedAuthor, setSelectedAuthor] = useState<{ bdrc_id: string; name: string } | null>(null);
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
   
-  // BDRC search hook
+  // BDRC Title search state
+  const [titleSearchQuery, setTitleSearchQuery] = useState(formData.title);
+  const [selectedTitle, setSelectedTitle] = useState<{ instanceId: string; prefLabel: string } | null>(null);
+  const [showTitleDropdown, setShowTitleDropdown] = useState(false);
+  
+  // BDRC search hooks
   const { results: authorResults, isLoading: isLoadingAuthors } = useBdrcSearch(authorSearchQuery, "Person", 300);
+  const { results: titleResults, isLoading: isLoadingTitles } = useBdrcSearch(titleSearchQuery, "Instance", 300);
+
 
   // Handle category selection
   const handleCategorySelect = (categoryId: string, path: Array<{ id: string; title: string; parentId: string | null }>) => {
@@ -91,7 +98,6 @@ const PublishForm: React.FC<PublishFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (validateForm()) {
       onSubmit(formData);
     }
@@ -155,6 +161,50 @@ const PublishForm: React.FC<PublishFormProps> = ({
     }
   };
 
+  // Handle title selection from BDRC search
+  const handleTitleSelect = (title: { instanceId?: string; prefLabel?: string }) => {
+    if (title.instanceId && title.prefLabel) {
+      setSelectedTitle({ instanceId: title.instanceId, prefLabel: title.prefLabel });
+      setFormData(prev => ({
+        ...prev,
+        title: title.prefLabel!
+      }));
+      setTitleSearchQuery(title.prefLabel);
+      setShowTitleDropdown(false);
+      
+      // Clear error
+      if (errors.title) {
+        setErrors(prev => ({
+          ...prev,
+          title: undefined
+        }));
+      }
+    }
+  };
+
+  // Handle title search input change
+  const handleTitleSearchChange = (value: string) => {
+    setTitleSearchQuery(value);
+    setFormData(prev => ({
+      ...prev,
+      title: value
+    }));
+    setShowTitleDropdown(value.length > 0);
+    
+    // Clear selection if user is typing and it doesn't match selected title
+    if (selectedTitle && value !== selectedTitle.prefLabel) {
+      setSelectedTitle(null);
+    }
+    
+    // Clear error when user starts typing
+    if (errors.title) {
+      setErrors(prev => ({
+        ...prev,
+        title: undefined
+      }));
+    }
+  };
+
 
   return (
     <div className="space-y-4">
@@ -167,22 +217,68 @@ const PublishForm: React.FC<PublishFormProps> = ({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
-          <div>
+          {/* Title with BDRC Search */}
+          <div className="relative">
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Title *
             </label>
-            <input
-              type="text"
-              id="title"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              disabled={isLoading}
-              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                errors.title ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
-              }`}
-              placeholder="Enter the title"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                id="title"
+                value={titleSearchQuery}
+                onChange={(e) => handleTitleSearchChange(e.target.value)}
+                onFocus={() => setShowTitleDropdown(titleSearchQuery.length > 0)}
+                disabled={isLoading}
+                className={`w-full px-3 py-2 pr-10 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  errors.title ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
+                }`}
+                placeholder="Search for title or enter manually..."
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                {isLoadingTitles ? (
+                  <svg className="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <Search className="h-4 w-4 text-gray-400" />
+                )}
+              </div>
+            </div>
+            
+            {/* Search Results Dropdown */}
+            {showTitleDropdown && titleResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {titleResults.map((title, index) => (
+                  <button
+                    key={title.instanceId || index}
+                    type="button"
+                    onClick={() => handleTitleSelect(title)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none text-sm border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="font-medium text-gray-900">{title.prefLabel}</div>
+                    {title.instanceId && (
+                      <div className="text-xs text-gray-500">ID: {title.instanceId}</div>
+                    )}
+                    {title.creator && (
+                      <div className="text-xs text-gray-500">Creator: {title.creator}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* Selected Title Display */}
+            {selectedTitle && (
+              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                <div className="text-sm text-green-800">
+                  <span className="font-medium">Selected:</span> {selectedTitle.prefLabel}
+                </div>
+                <div className="text-xs text-green-600">BDRC ID: {selectedTitle.instanceId}</div>
+              </div>
+            )}
+            
             {errors.title && (
               <p className="mt-1 text-xs text-red-600">{errors.title}</p>
             )}

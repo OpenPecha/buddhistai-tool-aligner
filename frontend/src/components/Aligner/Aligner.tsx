@@ -1,6 +1,7 @@
 import React from 'react';
 import Editor from './components/Editor';
 import MappingSidebar from './components/MappingSidebar';
+import UnifiedSelectionPanel from './components/UnifiedSelectionPanel';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMappingState } from './hooks/useMappingState';
 import { useTextSelectionStore } from '../../stores/textSelectionStore';
@@ -55,15 +56,19 @@ function AlignerContent() {
          
       {bothTextLoaded && <TextNavigationBar />}
       
-      {/* Editors and Sidebar Section - Only show when text is loaded */}
-      {showEditors ? (
+      {/* Unified Selection Panel - Show when both texts are not loaded */}
+      {!bothTextLoaded ? (
+        <div className="flex-1 min-h-0">
+          <UnifiedSelectionPanel />
+        </div>
+      ) : showEditors ? (
         <div className="flex-1 min-h-0 container mx-auto">
           <PanelGroup direction="horizontal" className="h-full">
             {/* Source Editor Panel */}
             <Panel 
-              defaultSize={bothTextLoaded ? 35 : 50} 
+              defaultSize={35} 
               minSize={20}  
-              maxSize={bothTextLoaded ? 50 : 80}
+              maxSize={50}
             >
                <Editor
                  ref={sourceEditorRef}
@@ -83,9 +88,9 @@ function AlignerContent() {
             
             {/* Target Editor Panel */}
             <Panel 
-              defaultSize={bothTextLoaded ? 35 : 50} 
+              defaultSize={35} 
               minSize={20} 
-              maxSize={bothTextLoaded ? 50 : 80}
+              maxSize={50}
             >
                <Editor
                  ref={targetEditorRef}
@@ -98,25 +103,21 @@ function AlignerContent() {
                />
             </Panel>
             
-            {/* Resize handle between editors and sidebar - only show when both texts are loaded */}
-            {bothTextLoaded && (
-              <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
-                <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
-              </PanelResizeHandle>
-            )}
+            {/* Resize handle between editors and sidebar */}
+            <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
+              <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
+            </PanelResizeHandle>
             
-            {/* Mapping Sidebar Panel - only show when both texts are loaded */}
-            {bothTextLoaded && (
-              <Panel 
-                defaultSize={30} 
-                minSize={25} 
-                maxSize={40}
-              >
-                <MappingSidebar
-                  mappings={mappings}
-                />
-              </Panel>
-            )}
+            {/* Mapping Sidebar Panel */}
+            <Panel 
+              defaultSize={30} 
+              minSize={25} 
+              maxSize={40}
+            >
+              <MappingSidebar
+                mappings={mappings}
+              />
+            </Panel>
           </PanelGroup>
         </div>
       ) : (

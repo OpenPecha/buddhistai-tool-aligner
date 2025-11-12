@@ -28,7 +28,6 @@ interface TextSelectionState {
   setTargetTextFromFile: (content: string) => void;
   setTargetTextFromUpload: (content: string) => void; // Set target text from file upload
   setSourceSelection: (textId: string, instanceId: string) => void; // Set source selection without loading text
-  setTargetSelection: (textId: string, instanceId: string) => void; // Set target selection without loading text
   clearSourceSelection: () => void;
   clearTargetSelection: () => void;
   clearAllSelections: () => void;
@@ -117,13 +116,6 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
     set({
       sourceTextId: textId,
       sourceInstanceId: instanceId,
-      // Don't set text content or loaded state - just the selection
-    }),
-  
-  setTargetSelection: (textId: string, instanceId: string) =>
-    set({
-      targetTextId: textId,
-      targetInstanceId: instanceId,
       // Don't set text content or loaded state - just the selection
     }),
     

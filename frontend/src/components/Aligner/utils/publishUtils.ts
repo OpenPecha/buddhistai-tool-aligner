@@ -1,5 +1,10 @@
 import type { SentenceMapping } from '../context/types';
 
+// Generate a unique ID for annotations
+const generateId = (): string => {
+  return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+};
+
 export interface PublishData {
   language: string;
   content: string;
@@ -15,6 +20,7 @@ export interface PublishData {
     };
   }>;
   target_annotation: Array<{
+    id: string;
     span: {
       start: number;
       end: number;
@@ -22,6 +28,7 @@ export interface PublishData {
     index: number;
   }>;
   alignment_annotation: Array<{
+    id: string;
     span: {
       start: number;
       end: number;
@@ -54,22 +61,37 @@ export const transformMappingsToAPI = (
   targetContent: string,
   metadata: PublishMetadata
 ): PublishData => {
-  // Filter out empty mappings (where start is -1 or end is -1)
-  const validMappings = mappings.filter(
+  // Separate all mappings into source and target segments
+  const allSourceSegments = mappings.filter(
+    m => m.source.start !== -1 && m.source.end !== -1
+  );
+  
+  const allTargetSegments = mappings.filter(
+    m => m.target.start !== -1 && m.target.end !== -1
+  );
+
+  // Validation: Target cannot have more segments than source
+  if (allTargetSegments.length > allSourceSegments.length) {
+    throw new Error(`Target cannot have more segments than source. Target has ${allTargetSegments.length} segments, but source only has ${allSourceSegments.length} segments.`);
+  }
+
+  // Filter mappings that have both valid source and target (aligned mappings)
+  const alignedMappings = mappings.filter(
     m => m.source.start !== -1 && m.source.end !== -1 && 
          m.target.start !== -1 && m.target.end !== -1
   );
 
-  // Create segmentation array (same as alignment_annotation but without index/alignment_index)
-  const segmentation = validMappings.map(mapping => ({
+  // Create segmentation array from all source segments
+  const segmentation = allSourceSegments.map(mapping => ({
     span: {
-      start: mapping.target.start,
-      end: mapping.target.end
+      start: mapping.source.start,
+      end: mapping.source.end
     }
   }));
 
-  // Create target_annotation array (source spans with index)
-  const target_annotation = validMappings.map((mapping, index) => ({
+  // Create target_annotation array from all source segments with sequential indices
+  const target_annotation = allSourceSegments.map((mapping, index) => ({
+    id: generateId(),
     span: {
       start: mapping.source.start,
       end: mapping.source.end
@@ -77,16 +99,29 @@ export const transformMappingsToAPI = (
     index
   }));
 
-  // Create alignment_annotation array (target spans with index and alignment_index)
-  const alignment_annotation = validMappings.map((mapping, index) => ({
-    span: {
-      start: mapping.target.start,
-      end: mapping.target.end
-    },
-    index,
-    alignment_index: [index]
-  }));
-  const contentWithoutNewlines = targetContent.replace(/\n/g, '');
+
+  // Create alignment_annotation array only for aligned mappings
+  const alignment_annotation = alignedMappings.map((mapping) => {
+    // Find the index of this source segment in the segmentation array
+    const sourceIndex = allSourceSegments.findIndex(
+      seg => seg.source.start === mapping.source.start && seg.source.end === mapping.source.end
+    );
+    
+    // alignment_index should match the source index for this alignment pattern
+    const targetAlignmentIndex = sourceIndex;
+
+    return {
+      id: generateId(),
+      span: {
+        start: mapping.target.start,  // Use TARGET span for alignment_annotation
+        end: mapping.target.end
+      },
+      index: sourceIndex,
+      alignment_index: [targetAlignmentIndex]
+    };
+  });
+
+  const contentWithoutNewlines = targetContent.replaceAll('\n', '');
   return {
     language: metadata.language,
     content: contentWithoutNewlines,
@@ -132,6 +167,17 @@ export const validatePublishData = (
 
   if (validMappings.length === 0) {
     return { isValid: false, error: 'At least one valid mapping is required' };
+  }
+
+  // Validate segment counts: Target cannot have more segments than source
+  const sourceSegments = mappings.filter(m => m.source.start !== -1 && m.source.end !== -1);
+  const targetSegments = mappings.filter(m => m.target.start !== -1 && m.target.end !== -1);
+  
+  if (targetSegments.length > sourceSegments.length) {
+    return { 
+      isValid: false, 
+      error: `Target cannot have more segments than source. Target has ${targetSegments.length} segments, but source only has ${sourceSegments.length} segments.` 
+    };
   }
 
   return { isValid: true };
