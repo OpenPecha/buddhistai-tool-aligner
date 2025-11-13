@@ -61,7 +61,6 @@ export function InstanceSelector({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex gap-2 items-center">
@@ -118,7 +117,6 @@ export function InstanceSelector({
           )}
         </div>
       </div>
-    </div>
   );
 }
 

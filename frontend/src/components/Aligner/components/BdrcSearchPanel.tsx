@@ -97,9 +97,6 @@ export function BdrcSearchPanel({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      
-      
       <div className="space-y-4">
         {/* BDRC Search Input */}
         <div className="space-y-2">
@@ -170,7 +167,6 @@ export function BdrcSearchPanel({
           </div>
         )}
       </div>
-    </div>
   );
 }
 

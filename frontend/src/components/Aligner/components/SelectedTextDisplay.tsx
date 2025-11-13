@@ -18,7 +18,7 @@ export function SelectedTextDisplay({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="rounded-lg">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h3 className="text-lg font-medium text-gray-900 mb-2">

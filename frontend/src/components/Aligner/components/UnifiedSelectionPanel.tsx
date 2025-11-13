@@ -11,7 +11,10 @@ import { RelatedInstancesPanel } from "./RelatedInstancesPanel";
 import { useAlignmentSegmentation } from "../hooks/useAlignmentSegmentation";
 import { useBdrcTextSelection } from "../hooks/useBdrcTextSelection";
 import { useRelatedInstances } from "../hooks/useRelatedInstances";
-import { fetchAnnotation, fetchInstance } from "../../../api/text";
+import {
+  fetchAnnotation,
+  fetchInstance,
+} from "../../../api/text";
 import {
   applySegmentation,
   generateFileSegmentation,
@@ -25,6 +28,8 @@ function UnifiedSelectionPanel() {
     sourceInstanceId,
     sourceTextId,
     targetInstanceId,
+    isSourceLoaded,
+    isTargetLoaded,
     setSourceSelection,
     isLoadingAnnotations,
     loadingMessage,
@@ -49,7 +54,7 @@ function UnifiedSelectionPanel() {
     string | null
   >(null);
 
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // BDRC search hook
   const {
@@ -79,10 +84,7 @@ function UnifiedSelectionPanel() {
   } = useInstance(selectedInstanceId);
 
   // React Query hooks for target
-  const { data: relatedInstances = [] } = useRelatedInstances(
-    sourceInstanceId,
-    { enabled: Boolean(sourceInstanceId) }
-  );
+  const { data: relatedInstances = [] } = useRelatedInstances(sourceInstanceId);
 
   // Available instances for source
   const availableInstances = React.useMemo(() => {
@@ -107,6 +109,48 @@ function UnifiedSelectionPanel() {
       console.error("Error updating source parameters:", error);
     }
   }, [instanceData, selectedInstanceId, selectedTextId, setSourceSelection]);
+
+  // Track if we've loaded from URL to prevent re-loading
+  const [hasLoadedFromUrl, setHasLoadedFromUrl] = React.useState(false);
+
+  // Load texts from URL parameters on mount
+  React.useEffect(() => {
+    const urlSourceId = searchParams.get("s_id");
+    const urlTargetId = searchParams.get("t_id");
+
+    // Only load if we have URL params, haven't loaded yet, and texts aren't already loaded
+    if (
+      (urlSourceId || urlTargetId) &&
+      !hasLoadedFromUrl &&
+      !isSourceLoaded &&
+      !isTargetLoaded
+    ) {
+      const loadFromUrl = async () => {
+        try {
+          setHasLoadedFromUrl(true);
+
+          if (urlSourceId) {
+            setSelectedInstanceId(urlSourceId);
+          }
+          if (urlTargetId) {
+            setSelectedTargetInstanceId(urlTargetId);
+          }
+        } catch (error) {
+          console.error("Error loading source from URL parameters:", error);
+          setHasLoadedFromUrl(false);
+        }
+      };
+
+      loadFromUrl();
+    }
+  }, [
+    searchParams,
+    hasLoadedFromUrl,
+    isSourceLoaded,
+    isTargetLoaded,
+    sourceInstanceId,
+    setSourceSelection,
+  ]);
 
   // Handle BDRC result selection - wraps the hook handler to also set text ID
   const handleBdrcResultSelect = React.useCallback(
@@ -567,6 +611,51 @@ function UnifiedSelectionPanel() {
     ]
   );
 
+  // Load target after source is loaded and related instances are available
+  React.useEffect(() => {
+    const urlTargetId = searchParams.get("t_id");
+
+    // Load target if t_id is present, source is loaded, and target isn't loaded yet
+    if (
+      urlTargetId &&
+      sourceInstanceId &&
+      !isTargetLoaded &&
+      relatedInstances.length > 0 &&
+      hasLoadedFromUrl
+    ) {
+      const targetInstance = relatedInstances.find(
+        (instance) => (instance.instance_id || instance.id) === urlTargetId
+      );
+
+      if (targetInstance) {
+        // Check if it has alignment annotation
+        const annotationId =
+          (
+            targetInstance as {
+              annotation?: string;
+              annotations?: Array<{ annotation_id: string }>;
+            }
+          ).annotation || targetInstance.annotations?.[0]?.annotation_id;
+        const hasAlignment = Boolean(annotationId);
+
+        // Trigger target selection which will load the texts
+        handleTargetInstanceSelection(urlTargetId, hasAlignment);
+
+        if (annotationId) {
+          setSelectedAnnotationId(annotationId);
+        }
+      }
+    }
+  }, [
+    sourceInstanceId,
+    searchParams,
+    isTargetLoaded,
+    relatedInstances,
+    handleTargetInstanceSelection,
+    hasLoadedFromUrl,
+    setSelectedAnnotationId,
+  ]);
+
   // Handle creating new text
   const handleCreateText = React.useCallback(() => {
     if (!selectedTextId) return;
@@ -616,9 +705,22 @@ function UnifiedSelectionPanel() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        <div className="mx-auto space-y-6 flex gap-4">
-          <div className="flex-1">
+      <div className="flex-1 h-full flex flex-col md:flex-row min-h-0">
+        {/* Left Side: Text and Instance Selection */}
+        <div className="w-full md:w-1/2 flex flex-col bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Select Source Text & Instance
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              Search for a text and choose an instance to align
+            </p>
+          </div>
+          
+          <div className="flex-1 px-6 py-6 space-y-6">
             {/* BDRC Search Panel */}
             {shouldShowBdrcSearch && (
               <BdrcSearchPanel
@@ -658,124 +760,165 @@ function UnifiedSelectionPanel() {
               />
             )}
           </div>
-          {
-            selectedInstanceId ?
-          <div className="flex-1">
-            {/* Related Instances Panel */}
-            {shouldShowRelatedInstances && (
+        </div>
+
+        {/* Right Side: Related Instance Selection */}
+        <div className="w-full md:w-1/2 flex flex-col bg-white overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Select Related Instance
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              Choose a translation or commentary to align with
+            </p>
+          </div>
+
+          <div className="flex-1 px-6 py-6">
+            {selectedInstanceId ? (
               <>
-                <RelatedInstancesPanel
-                  sourceInstanceId={sourceInstanceId}
-                  selectedTargetInstanceId={selectedTargetInstanceId}
-                  onTargetInstanceSelect={handleTargetInstanceSelection}
-                  onCreateTranslation={() =>
-                    handleActionSelection("create-translation")
-                  }
-                  onCreateCommentary={() =>
-                    handleActionSelection("create-commentary")
-                  }
-                />
+                {shouldShowRelatedInstances && (
+                  <>
+                    <RelatedInstancesPanel
+                      sourceInstanceId={sourceInstanceId}
+                      selectedTargetInstanceId={selectedTargetInstanceId}
+                      onTargetInstanceSelect={handleTargetInstanceSelection}
+                      onCreateTranslation={() =>
+                        handleActionSelection("create-translation")
+                      }
+                      onCreateCommentary={() =>
+                        handleActionSelection("create-commentary")
+                      }
+                    />
 
-                {/* Loading indicators */}
-                {(isLoadingAlignment ||
-                  isLoadingSourceInstance ||
-                  isLoadingTargetInstance) &&
-                  selectedAnnotationId && (
-                    <div className="mt-4 space-y-2">
-                      {isLoadingAlignment && (
-                        <div className="flex items-center space-x-2 text-sm text-blue-600">
-                          <svg
-                            className="animate-spin h-4 w-4 text-blue-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          <span>Fetching alignment annotation...</span>
+                    {/* Loading indicators */}
+                    {(isLoadingAlignment ||
+                      isLoadingSourceInstance ||
+                      isLoadingTargetInstance) &&
+                      selectedAnnotationId && (
+                        <div className="mt-4 space-y-2">
+                          {isLoadingAlignment && (
+                            <div className="flex items-center space-x-2 text-sm text-blue-600">
+                              <svg
+                                className="animate-spin h-4 w-4 text-blue-500"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                ></circle>
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                              </svg>
+                              <span>Fetching alignment annotation...</span>
+                            </div>
+                          )}
+                          {isLoadingSourceInstance && (
+                            <div className="flex items-center space-x-2 text-sm text-blue-600">
+                              <svg
+                                className="animate-spin h-4 w-4 text-blue-500"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                ></circle>
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                              </svg>
+                              <span>Fetching source text content...</span>
+                            </div>
+                          )}
+                          {isLoadingTargetInstance && (
+                            <div className="flex items-center space-x-2 text-sm text-blue-600">
+                              <svg
+                                className="animate-spin h-4 w-4 text-blue-500"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                ></circle>
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                              </svg>
+                              <span>Fetching target text content...</span>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {isLoadingSourceInstance && (
-                        <div className="flex items-center space-x-2 text-sm text-blue-600">
-                          <svg
-                            className="animate-spin h-4 w-4 text-blue-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          <span>Fetching source text content...</span>
-                        </div>
-                      )}
-                      {isLoadingTargetInstance && (
-                        <div className="flex items-center space-x-2 text-sm text-blue-600">
-                          <svg
-                            className="animate-spin h-4 w-4 text-blue-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          <span>Fetching target text content...</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
-                {alignmentError && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">
-                      Failed to load alignment annotation:{" "}
-                      {alignmentError.message}
-                    </p>
-                  </div>
+                    {alignmentError && (
+                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm text-red-600">
+                          Failed to load alignment annotation:{" "}
+                          {alignmentError.message}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 mb-1">
+                    Select a source instance first
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Choose a text and instance on the left to see related instances here
+                  </p>
+                </div>
+              </div>
             )}
           </div>
-          : <div className="flex-1"/>
-          }
-
         </div>
       </div>
+
       <LoadingOverlay
         isVisible={isLoadingAnnotations}
         message={loadingMessage || "Processing annotations..."}

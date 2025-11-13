@@ -144,7 +144,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         
         // Use scrollPosIntoView for smooth scrolling to the line
         const scrollEffect = EditorView.scrollIntoView(linePos, {
-          y: 'start', // Align to top of viewport
+          y: 'center', // Align to top of viewport
           yMargin: 0
         });
         
@@ -217,7 +217,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         if (targetPosition !== null) {
           // Scroll to the aligned segment
           const scrollEffect = EditorView.scrollIntoView(targetPosition, {
-            y: 'start', // Center the segment in viewport for better visibility
+            y: 'center', // Center the segment in viewport for better visibility
             yMargin: 50
           });
           
@@ -271,7 +271,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         if (targetPosition !== null) {
           // Scroll to the aligned segment
           const scrollEffect = EditorView.scrollIntoView(targetPosition, {
-            y: 'start', // Center the segment in viewport for better visibility
+            y: 'center', // Center the segment in viewport for better visibility
             yMargin: 50
           });
           
@@ -309,7 +309,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         
         // Scroll the other editor to the corresponding line
         const scrollEffect = EditorView.scrollIntoView(targetLinePos, {
-          y: 'start', // Align to top of viewport
+          y: 'center', // Align to top of viewport
           yMargin: 0
         });
         

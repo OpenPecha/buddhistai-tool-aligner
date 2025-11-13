@@ -21,9 +21,8 @@ function AlignerContent() {
   const showEditors = true;
 
   const bothTextLoaded = isSourceLoaded && isTargetLoaded;
-  const mapAvailable = bothTextLoaded;
   return (
-    <div className='w-full h-full flex flex-col overflow-hidden'>
+    <div className='w-full flex h-full flex-col'>
       {/* Header */}
          
       {bothTextLoaded && (
@@ -99,17 +98,12 @@ function AlignerContent() {
           </PanelGroup>
         </div>
       ) : (
-        <div className="flex-1 min-h-0">
           <UnifiedSelectionPanel />
-        </div>
       )}
     
       {/* Footer */}
-      <div className='h-8 shrink-0 bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
-        {
-         mapAvailable ? <span>Only Enter and Undo (Ctrl+Z / Cmd+Z) keys are available for editing</span> : 
-         <span>Edit the translation/commentary text</span>
-        } 
+      <div className='absolute bottom-0 left-0 right-0 h-8 shrink-0 bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
+      <span>Only Enter and Backspace keys are available for editing</span> 
       </div>
     </div>
   );
