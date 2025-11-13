@@ -68,12 +68,12 @@
   background: #f3f4f6;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Noto", sans-serif;
 }
 
 .segment-range {
   color: #9ca3af;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Noto", sans-serif;
 }
 
 .segment-title {

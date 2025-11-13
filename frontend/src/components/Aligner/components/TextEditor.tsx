@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorSelection, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
@@ -14,6 +14,7 @@ interface TextEditorProps {
   readonly editorType: EditorType;
   readonly onSelectionChange?: SelectionHandler;
   readonly mappings?: TextMapping[];
+  readonly fontSize: number;
 }
 
 function TextEditor({
@@ -22,7 +23,8 @@ function TextEditor({
   editorId,
   editorType,
   onSelectionChange,
-  mappings = []
+  mappings = [],
+  fontSize
 }: TextEditorProps) {
   // Editor context for scroll synchronization
   const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing } = useEditorContext();
@@ -310,12 +312,16 @@ function TextEditor({
     });
   }, [handleCursorChange]);
 
+
   return (
-    <div className="editor-container box-border relative h-full w-full" style={{ fontFamily: 'var(--font-monlam)' }}>
+    <div className="editor-container box-border relative h-full w-full" 
+    style={{ fontSize: `${fontSize}px` } as React.CSSProperties}
+    >
         <CodeMirror 
           value={value}  
           height="100%"
           width="100%"
+          className="font-['monlam']"
           ref={ref}
           onChange={onChange}  
           editable={isFullyEditable || isEditable}

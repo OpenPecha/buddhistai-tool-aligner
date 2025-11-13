@@ -9,8 +9,12 @@ function CatalogerButton() {
         window.open(catalogerUrl, '_blank');
     }
   return (
-    <button onClick={handleOpenCataloger} className='cursor-pointer flex gap-2 items-center px-4 py-2 bg-blue-100 text-blue-700 text-sm rounded hover:bg-blue-200 transition-colors'>
-      <PlusCircle className="w-6 h-6 text-gray-500" /> {t('aligner.createText')}
+    <button 
+      onClick={handleOpenCataloger} 
+      className='flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ease-in-out active:scale-95'
+    >
+      <PlusCircle className="w-4 h-4" /> 
+      {t('aligner.createText')}
     </button>
   )
 }

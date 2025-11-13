@@ -3,9 +3,12 @@ import CatalogerButton from '../components/CatalogerButton';
 import LanguageSelector from '../components/LanguageSelector';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useTextSelectionStore } from '../stores/textSelectionStore';
 
 function AlignerPage() {
   const { t } = useTranslation();
+  const { isTargetLoaded } = useTextSelectionStore();
+  
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Navigation Header */}
@@ -18,7 +21,7 @@ function AlignerPage() {
           {t('aligner.title')}</Link>
             <div className="flex items-center gap-3">
               <LanguageSelector />
-              <CatalogerButton />
+              {!isTargetLoaded && <CatalogerButton />}
             </div>
           </div>
         </div>

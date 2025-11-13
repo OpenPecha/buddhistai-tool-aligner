@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+@font-face {
+	font-family: "Noto";
+	src: url("/font/Noto.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "monlam";
+	src: url("/font/MonlamUniOuChan2.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "poppins";
+	src: url("/font/Poppins-Regular.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+
+
 /* Ensure full height inheritance */
 html, body, #root {
   height: 100%;
@@ -7,6 +27,11 @@ html, body, #root {
   padding: 0;
 }
 
+.noto-serif-tibetan {
+	font-family: "Noto", sans-serif;
+	font-optical-sizing: auto;
+	font-style: normal;
+  }
 /* Text Mapping Styles */
 .mapping-highlight {
   position: relative;
@@ -126,32 +151,7 @@ html, body, #root {
   cursor: col-resize;
 }
 
-@font-face {
-	font-family: monlam;
-	src: url("/font/MonlamUniOuChan2.ttf") format("truetype");
-	font-weight: normal;
-	font-style: normal;
-}
-@font-face {
-	font-family: monlam-2;
-	src: url("/font/MonlamUniOuChan2.ttf") format("truetype");
-	font-weight: normal;
-	font-style: normal;
-}
-
-/* @font-face {
-	font-family: monlam-2;
-	src: url("/font/MonlamTBslim.woff") format("woff");
-	font-weight: normal;
-	font-style: normal;
-} */
-
-@font-face {
-	font-family: google-sans;
-	src: url("/font/ProductSans-Regular.ttf") format("truetype");
-	font-weight: normal;
-	font-style: normal;
-}
+/* All fonts now use Noto */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -227,9 +227,7 @@ html, body, #root {
 	--sidebar-accent-foreground: oklch(0.21 0.006 285.885);
 	--sidebar-border: oklch(0.92 0.004 286.32);
 	--sidebar-ring: oklch(0.705 0.015 286.067);
-	--font-monlam: "monlam-2", sans-serif;
-	--font-monlam-2: "monlam", sans-serif;
-	--font-google-sans: "google-sans", sans-serif;
+	--font-noto: "Noto", sans-serif;
 
 	--color-editor-background: #f8fafc;
 	--color-footnote-background: #738596;
@@ -238,23 +236,20 @@ html, body, #root {
 }
 
 .cm-scroller{
-	font-family: var(--font-monlam) !important;
+	font-family: "Noto", sans-serif !important;
 }
 
 
 @theme {
-	--font-monlam: monlam, sans-serif;
-	--font-monlam-2: monlam-2, sans-serif;
-	--font-google-sans: "google-sans", sans-serif;
+	--font-noto: "Noto", sans-serif;
+	--font-poppins: "poppins", sans-serif;
 }
-.ql-container.font-monlam {
-	font-family: var(--font-monlam) !important;
+.ql-container.font-noto {
+	font-family: "Noto", sans-serif !important;
 }
 
 body {
-	font-family:
-	"monlam","monlam-2","google-sans", "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-		"Helvetica Neue", sans-serif;
+	font-family: "poppins", sans-serif;
 	line-height: 1.6;
 	color: var(--text-color);
 	overflow: hidden;
@@ -374,9 +369,8 @@ body {
 	--color-neutral-700: #404040;
 	--color-neutral-800: #262626;
 
+	--font-noto: "Noto", sans-serif;
 	--font-monlam: "monlam", sans-serif;
-	--font-monlam-2: "monlam-2", sans-serif;
-	--font-google-sans: "google-sans", sans-serif;
 }
 
 @layer base {

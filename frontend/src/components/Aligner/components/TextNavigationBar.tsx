@@ -112,7 +112,7 @@ function TextNavigationBar() {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{t('aligner.source')}:</span>
-            <div className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
+            <div className="text-sm font-['Noto'] text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
               {!isSourceLoaded || sourceLoadType === 'file' ? 
                 (sourceLoadType === 'file' ? t('aligner.sourceText') : t('common.notSelected')) : 
                 getInstanceDisplayName(sourceInstanceData, selectedSourceInstanceId)}
@@ -120,7 +120,7 @@ function TextNavigationBar() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{t('aligner.target')}:</span>
-            <div className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
+            <div className="text-sm font-['Noto'] text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
               {!isTargetLoaded || targetLoadType === 'file' ? 
                 (targetLoadType === 'file' ? t('aligner.targetText') : t('aligner.emptyTargetFile')) : 
                 getInstanceDisplayName(targetInstanceData, selectedTargetInstanceId)}

@@ -48,12 +48,7 @@ export const useTexts = (params?: {
   return useQuery({
     queryKey: textKeys.list(params || {}),
     queryFn: () => fetchTexts(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval:false,
-    refetchOnWindowFocus:false,
-    refetchOnMount:false,
-    refetchOnReconnect:false,
-    refetchIntervalInBackground:false,
+    refetchIntervalInBackground:true,
   });
 };
 

@@ -123,7 +123,7 @@
 
 .status-value {
   color: #111827;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Noto", sans-serif;
 }
 
 /* Responsive adjustments */

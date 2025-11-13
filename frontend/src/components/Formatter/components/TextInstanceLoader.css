@@ -124,7 +124,7 @@
 .info-item span {
   font-size: 0.875rem;
   color: #374151;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Noto", sans-serif;
 }
 
 .processing-errors {

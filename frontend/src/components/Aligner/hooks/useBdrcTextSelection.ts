@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchText } from '../../../api/text';
-import { useTexts } from '../../../hooks/useTextData';
 import { type BdrcSearchResult } from './uesBDRC';
 
 export function useBdrcTextSelection() {
@@ -13,7 +12,6 @@ export function useBdrcTextSelection() {
   const [fetchedTexts, setFetchedTexts] = useState<Array<{ id: string; bdrc: string; title: Record<string, string>; language: string }>>([]);
   
   const queryClient = useQueryClient();
-  const { data: availableTexts = [] } = useTexts({ limit: 50 });
 
   const handleBdrcResultSelect = useCallback(async (result: BdrcSearchResult) => {
     if (!result.workId) return;
@@ -25,10 +23,8 @@ export function useBdrcTextSelection() {
     
     try {
       // First check in available texts (quick check)
-      let matchingText = availableTexts.find(text => text.bdrc === result.workId);
-      
+      let matchingText = null;
       // If not found, try to fetch the text using BDRC ID as text ID
-      if (!matchingText) {
         try {
           const text = await fetchText(result.workId);
           // If fetchText succeeds, check if the BDRC ID matches
@@ -50,7 +46,6 @@ export function useBdrcTextSelection() {
           // fetchText failed, text doesn't exist - this is expected
           // We'll show the create button below
         }
-      }
       
       if (matchingText) {
         // Text exists, return the text ID
@@ -70,7 +65,7 @@ export function useBdrcTextSelection() {
       setIsCheckingBdrcText(false);
       return null;
     }
-  }, [availableTexts, queryClient]);
+  }, [queryClient]);
 
   const handleResetBdrcSelection = useCallback(() => {
     setSelectedBdrcResult(null);

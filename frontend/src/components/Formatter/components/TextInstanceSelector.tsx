@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useTexts, useTextInstances, useInstance, useAnnotation } from '../../../hooks/useTextData';
+import { useTextInstances, useInstance, useAnnotation } from '../../../hooks/useTextData';
 import { applySegmentation } from '../../../lib/annotation';
-import type { OpenPechaText, OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
+import type { OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
 import type { SegmentAnnotation } from '../types';
 import type { BdrcSearchResult } from '../../Aligner/hooks/uesBDRC';
 import { useBdrcTextSelection } from '../../Aligner/hooks/useBdrcTextSelection';
@@ -89,9 +89,6 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     hasSelectedText,
   } = useBdrcTextSelection();
 
-  // Fetch texts list
-  const { data: texts, isLoading: isLoadingTexts, error: textsError } = useTexts();
-  
   // Get text ID from BDRC selection
   const selectedTextIdFromBdrc = useMemo(() => {
     if (!selectedBdrcResult?.workId) return null;
@@ -256,9 +253,8 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   };
 
   const getSelectedTextTitle = () => {
-    if (!selectedTextId || !texts) return '';
-    const selectedText = texts.find((text: OpenPechaText) => text.id === selectedTextId);
-    return selectedText ? getDisplayTitle(selectedText.title, selectedText.language) || selectedText.id : '';
+    if (!selectedTextId) return '';
+    return selectedTextId;
   };
 
   const handleInstanceSelect = (instanceId: string) => {
@@ -266,21 +262,6 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     setProcessingError(null);
   };
 
-  // Filter texts based on search query
-  const filteredTexts = useMemo(() => {
-    if (!texts || !searchQuery.trim()) {
-      return texts || [];
-    }
-    
-    const query = searchQuery.toLowerCase();
-    return texts.filter((text: OpenPechaText) => {
-      const displayTitle = getDisplayTitle(text.title, text.language) || text.id;
-      return displayTitle.toLowerCase().includes(query) ||
-             text.id.toLowerCase().includes(query) ||
-             (text.language && text.language.toLowerCase().includes(query)) ||
-             (text.type && text.type.toLowerCase().includes(query));
-    });
-  }, [texts, searchQuery]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -296,8 +277,8 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     };
   }, []);
 
-  const isLoading = isLoadingTexts || isLoadingInstances || isLoadingInstance || isLoadingAnnotation || isProcessing;
-  const error = textsError || instancesError || instanceError || annotationError || processingError;
+  const isLoading = isLoadingInstances || isLoadingInstance || isLoadingAnnotation || isProcessing;
+  const error = instancesError || instanceError || annotationError || processingError;
 
   // Determine what to show
   const shouldShowBdrcSearch = !hasSelectedText && !selectedTextId;
@@ -322,19 +303,22 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
         )}
 
         {/* BDRC Search Panel */}
+        <div className="max-w-md">
+
         {shouldShowBdrcSearch && (
           <BdrcSearchPanel
-            bdrcSearchQuery={bdrcSearchQuery}
-            setBdrcSearchQuery={setBdrcSearchQuery}
-            showBdrcResults={showBdrcResults}
-            setShowBdrcResults={setShowBdrcResults}
-            bdrcTextNotFound={bdrcTextNotFound}
-            isCheckingBdrcText={isCheckingBdrcText}
-            selectedBdrcResult={selectedBdrcResult}
-            onResultSelect={handleBdrcResultSelect}
-            onCreateText={handleCreateTextFromBdrc}
+          bdrcSearchQuery={bdrcSearchQuery}
+          setBdrcSearchQuery={setBdrcSearchQuery}
+          showBdrcResults={showBdrcResults}
+          setShowBdrcResults={setShowBdrcResults}
+          bdrcTextNotFound={bdrcTextNotFound}
+          isCheckingBdrcText={isCheckingBdrcText}
+          selectedBdrcResult={selectedBdrcResult}
+          onResultSelect={handleBdrcResultSelect}
+          onCreateText={handleCreateTextFromBdrc}
           />
         )}
+        </div>
 
         {/* Selected BDRC Text Display */}
         {shouldShowSelectedBdrcText && (

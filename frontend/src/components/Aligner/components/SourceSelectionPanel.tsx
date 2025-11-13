@@ -19,7 +19,7 @@ function SourceSelectionPanel() {
   const [, setSearchParams] = useSearchParams();
   
   // React Query hooks
-  const { data: availableTexts = [], isLoading: isLoadingTexts, error: textsError } = useTexts({ limit: 50 });
+  const { data: availableTexts = [], isLoading: isLoadingTexts, error: textsError } = useTexts();
   const { data: instancesData, isLoading: isLoadingInstances, error: instancesError } = useTextInstances(selectedTextId);
   const { isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
   

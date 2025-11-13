@@ -118,14 +118,12 @@ function UnifiedSelectionPanel() {
   React.useEffect(() => {
     const urlSourceId = searchParams.get("s_id");
     const urlTargetId = searchParams.get("t_id");
-    // Only load if we have URL params, haven't loaded yet, and texts aren't already loaded
-    console.log(urlSourceId, urlTargetId, hasLoadedFromUrl, isSourceLoaded, isTargetLoaded)
+    if(!urlSourceId || !urlTargetId) return;
     if (
-      (urlSourceId || urlTargetId) &&
+      !hasLoadedFromUrl &&
       !isSourceLoaded &&
       !isTargetLoaded
     ) {
-console.log('loading from url')
       const loadFromUrl = async () => {
         try {
           setHasLoadedFromUrl(true);
@@ -136,7 +134,7 @@ console.log('loading from url')
             setLoadingAnnotations(false);
             return;
           }
-
+          
           // Fetch the source instance
           const sourceInstanceData = await fetchInstance(urlSourceId);
           
@@ -341,8 +339,6 @@ console.log('loading from url')
                 setSearchParams((prev) => {
                   prev.set("s_id", urlSourceId);
                   prev.set("t_id", urlTargetId);
-                  prev.delete("tTextId");
-                  prev.delete("tInstanceId");
                   return prev;
                 });
               } catch (error) {
@@ -539,6 +535,123 @@ console.log('loading from url')
                 setAnnotationsApplied(true);
               }
             }
+          } else {
+            // No target ID provided - just load source text
+            try {
+              // Reuse the already-fetched source instance data
+              
+              // Try to get segmentation for source
+              const getSegmentationAnnotationId = (
+                instanceData: OpenPechaTextInstance
+              ): string | null => {
+                if (
+                  !instanceData?.annotations ||
+                  typeof instanceData.annotations !== "object"
+                ) {
+                  return null;
+                }
+
+                interface AnnotationWithId {
+                  annotation_id?: string;
+                  type?: string;
+                }
+
+                const annotation = Object.values(instanceData.annotations)
+                  .flat()
+                  .find(
+                    (ann): ann is AnnotationWithId =>
+                      ann !== null &&
+                      typeof ann === "object" &&
+                      "annotation_id" in ann &&
+                      "type" in ann &&
+                      (ann as AnnotationWithId).type === "segmentation"
+                  );
+
+                return annotation?.annotation_id || null;
+              };
+
+              const sourceSegmentationAnnotationId =
+                getSegmentationAnnotationId(sourceInstanceData);
+
+              let sourceSegmentation: Array<{
+                span: { start: number; end: number };
+              }> | null = null;
+
+              if (sourceSegmentationAnnotationId) {
+                try {
+                  const sourceAnnotationData = await fetchAnnotation(
+                    sourceSegmentationAnnotationId
+                  );
+                  
+                  interface AnnotationResponse {
+                    annotation?: Array<{ span: { start: number; end: number } }>;
+                    data?: Array<{ span: { start: number; end: number } }>;
+                  }
+                  
+                  if (Array.isArray(sourceAnnotationData)) {
+                    sourceSegmentation = sourceAnnotationData;
+                  } else if (sourceAnnotationData && typeof sourceAnnotationData === "object") {
+                    const response = sourceAnnotationData as AnnotationResponse;
+                    if (response.data && Array.isArray(response.data)) {
+                      sourceSegmentation = response.data;
+                    } else if (response.annotation && Array.isArray(response.annotation)) {
+                      sourceSegmentation = response.annotation;
+                    }
+                  }
+                } catch (error) {
+                  console.warn("Failed to fetch source segmentation annotation:", error);
+                }
+              }
+
+              // If no segmentation annotation found, try extracting from instance annotations
+              sourceSegmentation ??= extractInstanceSegmentation(
+                sourceInstanceData.annotations
+              );
+
+              // Get text content
+              const sourceContent = sourceInstanceData.content || "";
+
+              // Apply segmentation to text
+              let segmentedSourceText: string;
+
+              if (sourceSegmentation && sourceSegmentation.length > 0) {
+                segmentedSourceText = applySegmentation(
+                  sourceContent,
+                  sourceSegmentation
+                );
+              } else {
+                // Fallback to file segmentation if no instance segmentation
+                const sourceSegmentations = generateFileSegmentation(sourceContent);
+                segmentedSourceText = applySegmentation(
+                  sourceContent,
+                  sourceSegmentations
+                );
+              }
+
+              // Load the source text on editor
+              setSourceText(
+                sourceTextIdFromInstance,
+                urlSourceId,
+                segmentedSourceText,
+                "database"
+              );
+
+              setAnnotationsApplied(true);
+              setLoadingAnnotations(false);
+
+              // Update search params
+              setSearchParams((prev) => {
+                prev.set("s_id", urlSourceId);
+                prev.delete("t_id");
+                prev.delete("tTextId");
+                prev.delete("tInstanceId");
+                return prev;
+              });
+            } catch (error) {
+              console.error("Error loading source text:", error);
+              setLoadingAnnotations(false);
+              setAnnotationsApplied(true);
+            }
           }
         } catch (error) {
           console.error("Error loading source from URL parameters:", error);
@@ -549,20 +662,7 @@ console.log('loading from url')
 
       loadFromUrl();
     }
-  }, [
-    searchParams,
-    hasLoadedFromUrl,
-    isSourceLoaded,
-    isTargetLoaded,
-    setSourceSelection,
-    setLoadingAnnotations,
-    setSourceText,
-    setTargetText,
-    setAnnotationsApplied,
-    setSearchParams,
-    setSelectedTargetInstanceId,
-    setSelectedAnnotationId,
-  ]);
+  }, []);
 
   // Handle BDRC result selection - wraps the hook handler to also set text ID
   const handleBdrcResultSelect = React.useCallback(

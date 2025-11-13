@@ -5,14 +5,13 @@ import type { OpenPechaText, OpenPechaTextInstance, Annotations } from '../types
 // Real API function for Texts
 export const fetchTexts = async (params?: { limit?: number; offset?: number; language?: string; author?: string }): Promise<OpenPechaText[]> => {
   const queryParams = new URLSearchParams();
-  
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
   if (params?.language) queryParams.append('language', params.language);
   if (params?.author) queryParams.append('author', params.author);
   
   const queryString = queryParams.toString();
-  const url = queryString ? `${API_URL}/text?${queryString}` : `${API_URL}/text`;
+  const url = queryString ? `${API_URL}/text?${queryString}` : `${API_URL}/text?limit=20`;
   const response = await fetch(url);
   
   if (!response.ok) {

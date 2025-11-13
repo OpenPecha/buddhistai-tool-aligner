@@ -15,6 +15,7 @@ interface EditorProps {
   readonly onSelectionChange?: SelectionHandler;
   readonly mappings?: TextMapping[];
   readonly showContentOnlyWhenBothLoaded?: boolean;
+  readonly fontSize: number;
 }
 
 function Editor({
@@ -24,9 +25,9 @@ function Editor({
   editorType,
   onSelectionChange,
   mappings = [],
-  showContentOnlyWhenBothLoaded = false
+  showContentOnlyWhenBothLoaded = false,
+  fontSize
 }: EditorProps) {
-  // Zustand store
   const { 
     isSourceLoaded, 
     isTargetLoaded, 
@@ -37,17 +38,15 @@ function Editor({
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
   const bothTextsLoaded = isSourceLoaded && isTargetLoaded;
   
-  // Determine whether to show content based on the new prop
   const shouldShowContent = showContentOnlyWhenBothLoaded ? bothTextsLoaded : isTextLoaded;
   
-  // Show loading overlay when annotations are being processed and content is loaded
   const shouldShowLoadingOverlay = isLoadingAnnotations && shouldShowContent;
   
  return (
     <div className="relative flex-1 min-h-0 w-full overflow-hidden flex flex-col">
       {shouldShowContent ? (
         <>
-          <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex-1  min-h-0 overflow-auto ">
             <TextEditor
               ref={ref}
               isEditable={isEditable}
@@ -55,6 +54,7 @@ function Editor({
               editorType={editorType}
               onSelectionChange={onSelectionChange}
               mappings={mappings}
+              fontSize={fontSize}
             />
           </div>
           {/* Loading overlay for this specific editor */}
