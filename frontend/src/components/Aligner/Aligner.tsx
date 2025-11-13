@@ -22,7 +22,7 @@ function AlignerContent() {
 
   const bothTextLoaded = isSourceLoaded && isTargetLoaded;
   return (
-    <div className='w-full flex h-full flex-col'>
+    <div className='w-full h-full flex flex-col min-h-0'>
       {/* Header */}
          
       {bothTextLoaded && (

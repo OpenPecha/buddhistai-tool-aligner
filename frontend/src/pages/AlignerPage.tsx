@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next';
 function AlignerPage() {
   const { t } = useTranslation();
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Navigation Header */}
-      <header className="shadow-sm border-b shrink-0">
+      <header className="bg-white shadow-sm border-b shrink-0">
         <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
          
@@ -25,7 +25,9 @@ function AlignerPage() {
       </header>
 
       {/* Main Content */}
+      <div className="flex-1 min-h-0">
         <Aligner />
+      </div>
     </div>
   );
 }
