@@ -33,7 +33,7 @@ export interface AltTitle {
   
   export interface SegmentationAnnotation {
     id: string;
-    index: number;
+    index: string;
     span: Span;
   }
   

@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAnnotation, fetchInstance } from '../../../api/text';
 import { applySegmentation, generateFileSegmentation, extractInstanceSegmentation } from '../../../lib/annotation';
+import { reconstructSegments } from '../utils/generateAnnotation';
 import LoadingOverlay from './LoadingOverlay';
 import { CATALOGER_URL } from '../../../config';
 
@@ -112,23 +113,6 @@ function TargetSelectionPanel() {
     return 'translation';
   }, []);
 
-  const handleChangeSearchParams = React.useCallback((updates: Record<string, string>) => {
-    setSearchParams((prev) => {
-      for (const [key, value] of Object.entries(updates)) {
-        prev.set(key, value);
-      }
-      // If switching to empty mode, clear target instance related params
-      if (updates.state === 'empty') {
-        prev.delete('tInstanceId');
-        prev.set('tTextId', 'empty-target');
-      }
-      // If switching to related mode, clear empty state
-      if (updates.state === 'related') {
-        // Keep existing tTextId and tInstanceId if they exist
-      }
-      return prev;
-    });
-  }, [setSearchParams]);
   
   // React Query hooks - Disabled automatic instance fetching
   // const { data: instanceData, isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
@@ -232,57 +216,29 @@ function TargetSelectionPanel() {
             alignmentIndex: ann.alignment_index
           })));
           
-          // Apply target_annotation segmentation to source text
+          // Reconstruct segments from alignment annotations
           const sourceContent = sourceInstanceData.content || '';
-          console.log('🎯 Applying target_annotation to SOURCE text');
-          console.log('📝 Source content length:', sourceContent.length);
-          console.log('📝 Source content preview:', sourceContent.substring(0, 100));
-          segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
-          
-          // Create target segmentation that includes ALL alignment positions
           const targetContent = targetInstanceData.content || '';
-          console.log('🎯 Creating complete TARGET segmentation');
+          
+          console.log('🎯 Reconstructing segments from alignment annotations');
+          console.log('📝 Source content length:', sourceContent.length);
           console.log('📝 Target content length:', targetContent.length);
-          console.log('📝 Target content preview:', targetContent.substring(0, 100));
           
-          // Find the maximum alignment_index to know how many target lines we need
-          const maxAlignmentIndex = Math.max(
-            ...annotationData.target_annotation.map(ann => ann.index),
-            ...annotationData.alignment_annotation.flatMap(ann => ann.alignment_index)
+          const { source, target } = reconstructSegments(
+            annotationData.target_annotation,
+            annotationData.alignment_annotation,
+            sourceContent,
+            targetContent
           );
-          console.log('📊 Maximum alignment index found:', maxAlignmentIndex);
           
-          // Create target segments for each alignment position (0 to maxAlignmentIndex)
-          const targetSegments = [];
-          let currentPos = 0;
+          // Join segments with newlines to create segmented text
+          segmentedSourceText = source.join('\n');
+          segmentedTargetText = target.join('\n');
           
-          for (let i = 0; i <= maxAlignmentIndex; i++) {
-            // Find if there's an alignment_annotation for this position
-            const alignmentForThisIndex = annotationData.alignment_annotation.find(ann => 
-              ann.alignment_index.includes(i)
-            );
-            
-            if (alignmentForThisIndex) {
-              // Use the actual span from alignment_annotation
-              targetSegments.push({
-                span: alignmentForThisIndex.span
-              });
-              currentPos = alignmentForThisIndex.span.end;
-              console.log(`📍 Target line ${i}: Using alignment span ${alignmentForThisIndex.span.start}-${alignmentForThisIndex.span.end}`);
-            } else {
-              // Create an empty line placeholder for unaligned positions
-              targetSegments.push({
-                span: {
-                  start: currentPos,
-                  end: currentPos // Empty span creates a blank line
-                }
-              });
-              console.log(`📍 Target line ${i}: Creating empty line at position ${currentPos}`);
-            }
-          }
-          
-          console.log('📋 Complete target segments:', targetSegments);
-          segmentedTargetText = applySegmentation(targetContent, targetSegments);
+          console.log('✅ Segments reconstructed:', {
+            sourceSegments: source.length,
+            targetSegments: target.length
+          });
         } else {
           console.log('❌ Invalid alignment data structure, using fallback');
           console.log('🔍 Validation details:', {
@@ -364,11 +320,14 @@ function TargetSelectionPanel() {
       console.log('🏷️ Determined target type:', targetType);
       setTargetType(targetType);
       
-      // Update URL parameters for target selection
+      // Update URL parameters for target selection - only use t_id
       console.log('🔗 Updating URL parameters');
-      handleChangeSearchParams({
-        tTextId: `related-${selectedInstanceId}`,
-        tInstanceId: selectedInstanceId!
+      setSearchParams((prev) => {
+        prev.set('t_id', selectedInstanceId!);
+        // Remove old params if they exist
+        prev.delete('tTextId');
+        prev.delete('tInstanceId');
+        return prev;
       });
       
       // Mark annotations as applied
@@ -388,7 +347,7 @@ function TargetSelectionPanel() {
       setLoadingAnnotations(false);
       setAnnotationsApplied(true);
     }
-  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, isLoadingSourceInstance, isLoadingTargetInstance, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, handleChangeSearchParams, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
+  }, [alignmentAnnotation, sourceInstanceData, targetInstanceData, isLoadingSourceInstance, isLoadingTargetInstance, sourceInstanceId, sourceTextId, selectedInstanceId, setSourceText, setTargetText, setTargetType, setSearchParams, relatedInstances, determineTargetType, setLoadingAnnotations, setAnnotationsApplied]);
   
   // Load source text without segmentation when no target is selected or in empty mode
   React.useEffect(() => {
@@ -463,12 +422,15 @@ function TargetSelectionPanel() {
     
     setSelectedInstanceId(instanceId);
     
-    // Immediately update URL parameters to show selection
-    handleChangeSearchParams({
-      tTextId: `related-${instanceId}`,
-      tInstanceId: instanceId
+    // Update URL parameters - only use t_id
+    setSearchParams((prev) => {
+      prev.set('t_id', instanceId);
+      // Remove old params if they exist
+      prev.delete('tTextId');
+      prev.delete('tInstanceId');
+      return prev;
     });
-  }, [relatedInstances, handleChangeSearchParams]);
+  }, [relatedInstances, setSearchParams]);
 
 
   // Handle reset - clear target selection
@@ -483,6 +445,7 @@ function TargetSelectionPanel() {
     
     // Clear URL parameters for target
     setSearchParams((prev) => {
+      prev.delete('t_id');
       prev.delete('tTextId');
       prev.delete('tInstanceId');
       return prev;
@@ -510,17 +473,7 @@ function TargetSelectionPanel() {
               })()}
             </p>
           </div>
-          {/* Reset button - show when there is a target selection */}
-          {targetInstanceId && (
-            <button 
-              title="Reset target text selection" 
-              onClick={handleReset} 
-              className='cursor-pointer flex gap-2 items-center px-3 py-2 text-sm rounded transition-colors hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300'
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">Reset</span>
-            </button>
-          )}
+          
         </div>
       </div>
 

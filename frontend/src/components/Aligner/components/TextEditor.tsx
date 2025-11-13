@@ -311,17 +311,12 @@ function TextEditor({
   }, [handleCursorChange]);
 
   return (
-    <div className="relative h-full editor-container overflow-hidden">
-   
-
-      {/* Editor Container with proper width constraints */}
-      <div className="w-full h-full box-border relative" style={{ fontFamily: 'var(--font-monlam)' }}>
+    <div className="editor-container box-border relative h-full w-full" style={{ fontFamily: 'var(--font-monlam)' }}>
         <CodeMirror 
           value={value}  
-          height="100%" 
+          height="100%"
           width="100%"
           ref={ref}
-          className="w-full h-full text-lg" 
           onChange={onChange}  
           editable={isFullyEditable || isEditable}
           onKeyDown={handleKeyDown}
@@ -373,28 +368,9 @@ function TextEditor({
         )}
       </div>
       
-      {/* Selection indicator */}
-      {currentSelection && (
-        <div className="absolute top-2 right-2 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg selection-indicator animate-pulse">
-          <div className="text-xs font-medium mb-1">Selected Text</div>
-          <div className="text-sm">
-            "{currentSelection.text && currentSelection.text.length > 30 
-              ? `${currentSelection.text.substring(0, 30)}...` 
-              : currentSelection.text || ''}"
-          </div>
-          <div className="text-xs opacity-75 mt-1">
-            Position: {currentSelection.start || 0}-{currentSelection.end || 0}
-          </div>
-        </div>
-      )}
+  
 
-      {/* Mapping count indicator */}
-      {mappings.length > 0 && (
-        <div className="absolute bottom-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-          {mappings.length} mapping{mappings.length === 1 ? '' : 's'}
-        </div>
-      )}
-    </div>
+   
   );
 }
 

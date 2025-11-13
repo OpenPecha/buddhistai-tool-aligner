@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAnnotation, fetchInstance } from '../../../api/text';
 import { applySegmentation, generateFileSegmentation, extractInstanceSegmentation } from '../../../lib/annotation';
+import { reconstructSegments } from '../utils/generateAnnotation';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import type { RelatedInstance } from './useRelatedInstances';
 
@@ -167,38 +168,19 @@ export function useAlignmentSegmentation({
             annotationData?.alignment_annotation && Array.isArray(annotationData.alignment_annotation)) {
           
           const sourceContent = sourceInstanceData.content || '';
-          segmentedSourceText = applySegmentation(sourceContent, annotationData.target_annotation);
-          
           const targetContent = targetInstanceData.content || '';
-          const maxAlignmentIndex = Math.max(
-            ...annotationData.target_annotation.map(ann => ann.index),
-            ...annotationData.alignment_annotation.flatMap(ann => ann.alignment_index)
+          
+          // Reconstruct segments from alignment annotations
+          const { source, target } = reconstructSegments(
+            annotationData.target_annotation,
+            annotationData.alignment_annotation,
+            sourceContent,
+            targetContent
           );
           
-          const targetSegments = [];
-          let currentPos = 0;
-          
-          for (let i = 0; i <= maxAlignmentIndex; i++) {
-            const alignmentForThisIndex = annotationData.alignment_annotation.find(ann => 
-              ann.alignment_index.includes(i)
-            );
-            
-            if (alignmentForThisIndex) {
-              targetSegments.push({
-                span: alignmentForThisIndex.span
-              });
-              currentPos = alignmentForThisIndex.span.end;
-            } else {
-              targetSegments.push({
-                span: {
-                  start: currentPos,
-                  end: currentPos
-                }
-              });
-            }
-          }
-          
-          segmentedTargetText = applySegmentation(targetContent, targetSegments);
+          // Join segments with newlines to create segmented text
+          segmentedSourceText = source.join('\n');
+          segmentedTargetText = target.join('\n');
         } else {
           segmentedSourceText = sourceInstanceData.content || '';
           segmentedTargetText = targetInstanceData.content || '';
@@ -249,10 +231,7 @@ export function useAlignmentSegmentation({
       const targetType = determineTargetType(selectedInstance || null);
       setTargetType(targetType);
       
-      onSearchParamsChange({
-        tTextId: `related-${selectedTargetInstanceId}`,
-        tInstanceId: selectedTargetInstanceId!
-      });
+      // Don't update search params automatically - only update when user explicitly selects
       
       setAnnotationsApplied(true);
       

@@ -4,15 +4,13 @@ import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { PlusCircle, RotateCcw } from 'lucide-react';
 import { CATALOGER_URL } from '../../../config';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 function SourceSelectionPanel() {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const {
     sourceTextId, sourceInstanceId,
-    setSourceText, setSourceSelection
+    setSourceSelection
   } = useTextSelectionStore();
   
   const [selectedTextId, setSelectedTextId] = React.useState<string>(sourceTextId || '');
@@ -23,22 +21,13 @@ function SourceSelectionPanel() {
   // React Query hooks
   const { data: availableTexts = [], isLoading: isLoadingTexts, error: textsError } = useTexts({ limit: 50 });
   const { data: instancesData, isLoading: isLoadingInstances, error: instancesError } = useTextInstances(selectedTextId);
-  const { data: instanceData, isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
+  const { isLoading: isLoadingInstance, error: instanceError } = useInstance(selectedInstanceId);
   
   // Available instances for source editor
   const availableInstances = React.useMemo(() => {
     return Array.isArray(instancesData) ? instancesData : [];
   }, [instancesData]);
   
-  const handleChangeSearchParams = React.useCallback((updates: Record<string, string>) => {
-    setSearchParams((prev) => {
-      for (const [key, value] of Object.entries(updates)) {
-        prev.set(key, value);
-      }
-      return prev;
-    });
-  }, [setSearchParams]);
-
   // Sync local state with store state
   React.useEffect(() => {
     setSelectedTextId(sourceTextId || '');
@@ -55,30 +44,23 @@ function SourceSelectionPanel() {
 
   // Handle instance selection from dropdown (second step)
   const handleInstanceSelection = React.useCallback((instanceId: string) => {
+    console.log('🔗 Instance selection:', instanceId);
     if (!instanceId || !selectedTextId) return;
     
     setSelectedInstanceId(instanceId);
-  }, [selectedTextId]);
-
-  // Watch for instanceData changes and update store selection + URL parameters (but don't load text yet)
-  // Text loading will be handled by TargetSelectionPanel when alignment data is available
-  React.useEffect(() => {
-    if (!instanceData || !selectedInstanceId || !selectedTextId) return;
     
     try {
-      // Set source selection in store (this will make sourceInstanceId available for TargetSelectionPanel)
-      setSourceSelection(selectedTextId, selectedInstanceId);
+      setSourceSelection(selectedTextId, instanceId);
       
-      // Update URL parameters
-      handleChangeSearchParams({
-        sTextId: selectedTextId,
-        sInstanceId: selectedInstanceId
+      setSearchParams((prev) => {
+        prev.set('s_id', instanceId);
+        return prev;
       });
       
     } catch (error) {
       console.error('Error updating source parameters:', error);
     }
-  }, [instanceData, selectedInstanceId, selectedTextId, setSourceSelection, handleChangeSearchParams]);
+  }, [selectedTextId, setSourceSelection, setSearchParams]);
 
   // Handle creating new text (redirect to cataloger)
   const handleCreateText = React.useCallback(() => {
@@ -98,13 +80,14 @@ function SourceSelectionPanel() {
     
     // Clear URL parameters for source
     setSearchParams((prev) => {
+      prev.delete('s_id');
       prev.delete('sTextId');
       prev.delete('sInstanceId');
       return prev;
     });
     
     // Invalidate all queries to refresh data
-  }, [setSearchParams, queryClient]);
+  }, [setSearchParams]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50 border border-gray-200">
@@ -191,9 +174,13 @@ function SourceSelectionPanel() {
                 </option>
                 {availableInstances.map((instance) => {
                   if (!instance) return null;
-                  const firstIncipitKey = instance?.incipit_title ? Object.keys(instance.incipit_title)[0] : undefined;
-                  const firstAltIncipitKey = instance?.alt_incipit_titles ? Object.keys(instance.alt_incipit_titles)[0] : undefined;
-                  const title = (firstIncipitKey && instance?.incipit_title?.[firstIncipitKey]) || (firstAltIncipitKey && instance?.alt_incipit_titles?.[firstAltIncipitKey]) || `Instance ${instance.id}`;
+                  const incipitTitle = instance?.incipit_title;
+                  const altIncipitTitles = instance?.alt_incipit_titles;
+                  const firstIncipitKey = incipitTitle && typeof incipitTitle === 'object' ? Object.keys(incipitTitle)[0] : undefined;
+                  const firstAltIncipitKey = altIncipitTitles && typeof altIncipitTitles === 'object' ? Object.keys(altIncipitTitles)[0] : undefined;
+                  const title = (firstIncipitKey && incipitTitle && typeof incipitTitle === 'object' && incipitTitle[firstIncipitKey]) || 
+                                (firstAltIncipitKey && altIncipitTitles && typeof altIncipitTitles === 'object' && altIncipitTitles[firstAltIncipitKey]) || 
+                                `Instance ${instance.id}`;
 
                   return (
                     <option key={instance.id} value={instance.id}>

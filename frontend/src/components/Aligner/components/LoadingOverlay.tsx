@@ -13,8 +13,11 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
 }) => {
   if (!isVisible) return null;
 
+  // Use fixed positioning if className includes "fixed", otherwise use absolute
+  const positionClass = className.includes('fixed') ? 'fixed' : 'absolute';
+
   return (
-    <div className={`absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 ${className}`}>
+    <div className={`${positionClass} inset-0 bg-black/50 bg-opacity-90 flex items-center justify-center z-50 ${className}`}>
       <div className="flex flex-col items-center space-y-4">
         {/* Spinner */}
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

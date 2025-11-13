@@ -217,7 +217,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         if (targetPosition !== null) {
           // Scroll to the aligned segment
           const scrollEffect = EditorView.scrollIntoView(targetPosition, {
-            y: 'center', // Center the segment in viewport for better visibility
+            y: 'start', // Center the segment in viewport for better visibility
             yMargin: 50
           });
           
@@ -271,7 +271,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         if (targetPosition !== null) {
           // Scroll to the aligned segment
           const scrollEffect = EditorView.scrollIntoView(targetPosition, {
-            y: 'center', // Center the segment in viewport for better visibility
+            y: 'start', // Center the segment in viewport for better visibility
             yMargin: 50
           });
           

@@ -36,8 +36,7 @@ export function RelatedInstancesPanel({
   onCreateCommentary,
 }: RelatedInstancesPanelProps) {
   const { data: relatedInstances = [], isLoading: isLoadingRelatedInstances, error: relatedInstancesError } = useRelatedInstances(
-    sourceInstanceId,
-    { enabled: Boolean(sourceInstanceId) }
+    sourceInstanceId
   );
 
   const availableTargetInstances = React.useMemo(() => {

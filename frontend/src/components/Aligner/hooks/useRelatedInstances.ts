@@ -30,25 +30,17 @@ export interface RelatedInstance {
   relationship?: string;
 }
 
-interface UseRelatedInstancesOptions {
-  enabled?: boolean;
-}
 
 export const useRelatedInstances = (
-  instanceId: string | null,
-  options: UseRelatedInstancesOptions = {}
+  instanceId: string | null
 ) => {
   return useQuery({
     queryKey: ['relatedInstances', instanceId],
-    queryFn: (): Promise<RelatedInstance[]> => {
-      if (!instanceId) {
-        throw new Error('Instance ID is required');
-      }
-      return fetchRelatedInstances(instanceId);
-    },
+    queryFn:() => fetchRelatedInstances(instanceId!),
     refetchInterval: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: true,
-    enabled: Boolean(instanceId) && (options.enabled !== false),
+    refetchOnMount: true,
+    enabled: instanceId !== null && instanceId !== undefined,
     retry: 2,
   });
 };

@@ -5,7 +5,6 @@ import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import SourceSelectionPanel from './SourceSelectionPanel';
 import TargetSelectionPanel from './TargetSelectionPanel';
 import TextEditor from './TextEditor';
-import TextLoader from './TextLoader';
 import LoadingOverlay from './LoadingOverlay';
 
 interface EditorProps {
@@ -15,7 +14,6 @@ interface EditorProps {
   readonly editorType: EditorType;
   readonly onSelectionChange?: SelectionHandler;
   readonly mappings?: TextMapping[];
-  readonly onTextLoad?: (text: string, source: 'file' | 'api') => void;
   readonly showContentOnlyWhenBothLoaded?: boolean;
 }
 
@@ -26,7 +24,6 @@ function Editor({
   editorType,
   onSelectionChange,
   mappings = [],
-  onTextLoad,
   showContentOnlyWhenBothLoaded = false
 }: EditorProps) {
   // Zustand store
@@ -34,8 +31,7 @@ function Editor({
     isSourceLoaded, 
     isTargetLoaded, 
     isLoadingAnnotations, 
-    loadingMessage,
-    annotationsApplied 
+    loadingMessage
   } = useTextSelectionStore();
   
   const isTextLoaded = editorType === 'source' ? isSourceLoaded : isTargetLoaded;
@@ -48,17 +44,19 @@ function Editor({
   const shouldShowLoadingOverlay = isLoadingAnnotations && shouldShowContent;
   
  return (
-    <div className="relative h-full editor-container overflow-hidden">
+    <div className="relative flex-1 min-h-0 w-full overflow-hidden flex flex-col">
       {shouldShowContent ? (
         <>
-          <TextEditor
-            ref={ref}
-            isEditable={isEditable}
-            editorId={editorId}
-            editorType={editorType}
-            onSelectionChange={onSelectionChange}
-            mappings={mappings}
-          />
+          <div className="flex-1 min-h-0 overflow-auto">
+            <TextEditor
+              ref={ref}
+              isEditable={isEditable}
+              editorId={editorId}
+              editorType={editorType}
+              onSelectionChange={onSelectionChange}
+              mappings={mappings}
+            />
+          </div>
           {/* Loading overlay for this specific editor */}
           {shouldShowLoadingOverlay && (
             <LoadingOverlay 
@@ -68,7 +66,7 @@ function Editor({
           )}
         </>
       ) : (
-        <div className="relative h-full">
+        <div className="relative h-full w-full">
           {editorType === 'source' ? (
             <SourceSelectionPanel />
           ) : (

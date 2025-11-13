@@ -1,6 +1,4 @@
-import React from 'react';
 import Editor from './components/Editor';
-import MappingSidebar from './components/MappingSidebar';
 import UnifiedSelectionPanel from './components/UnifiedSelectionPanel';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMappingState } from './hooks/useMappingState';
@@ -13,143 +11,105 @@ function AlignerContent() {
   
   const {
     mappings,
-    currentSourceSelection,
-    currentTargetSelections,
-    canCreateMapping,
     selectionHandler,
-    createMapping,
-    deleteMapping,
-    clearAllMappings,
-    clearSelections,
-    getMappings,
   } = useMappingState();
 
   // Use Zustand store for text state
-  const {    isSourceLoaded, isTargetLoaded  } = useTextSelectionStore();
+  const { isSourceLoaded, isTargetLoaded } = useTextSelectionStore();
 
   // Always show editors
   const showEditors = true;
 
-  const handleExportMappings = () => {
-    const exportData = getMappings();
-    
-    // Create downloadable JSON file
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `text-mappings-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const targetType = useTextSelectionStore((state) => state.targetType);
-  const bothTextLoaded= isSourceLoaded && isTargetLoaded;
-  const mapAvailable = bothTextLoaded ;
+  const bothTextLoaded = isSourceLoaded && isTargetLoaded;
+  const mapAvailable = bothTextLoaded;
   return (
-    <div className='w-full h-full flex flex-col'>
+    <div className='w-full h-full flex flex-col overflow-hidden'>
       {/* Header */}
          
-      {bothTextLoaded && <TextNavigationBar />}
+      {bothTextLoaded && (
+        <div className="shrink-0">
+          <TextNavigationBar />
+        </div>
+      )}
       
       {/* Unified Selection Panel - Show when both texts are not loaded */}
-      {!bothTextLoaded ? (
-        <div className="flex-1 min-h-0">
-          <UnifiedSelectionPanel />
-        </div>
-      ) : showEditors ? (
-        <div className="flex-1 w-full">
-          <PanelGroup direction="horizontal" className="h-full">
+      {bothTextLoaded && showEditors ? (
+        <div className="flex-1 w-full flex  min-h-0 overflow-hidden bg-gray-50">
+          <PanelGroup direction="horizontal" className="flex-1">
             {/* Source Editor Panel */}
             <Panel 
-              defaultSize={35} 
-              minSize={20}  
-              maxSize={50}
+              defaultSize={50} 
+              minSize={30}  
+              maxSize={70}
+              className="min-h-0 flex flex-col bg-white border-r border-gray-200"
             >
-               <Editor
-                 ref={sourceEditorRef}
-                 isEditable={true}
-                 editorId="source-editor"
-                 editorType="source"
-                 onSelectionChange={selectionHandler}
-                 mappings={mappings}
-                 showContentOnlyWhenBothLoaded={true}
-               />
+              {/* Source Panel Header */}
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <h3 className="text-sm font-semibold text-gray-700">Source Text</h3>
+                </div>
+             
+              </div>
+              
+              {/* Source Editor Content */}
+                <Editor
+                  ref={sourceEditorRef}
+                  isEditable={true}
+                  editorId="source-editor"
+                  editorType="source"
+                  onSelectionChange={selectionHandler}
+                  mappings={mappings}
+                  showContentOnlyWhenBothLoaded={true}
+                />
             </Panel>
             
             {/* Resize handle between source and target */}
-            <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
-              <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
+            <PanelResizeHandle className="w-1 bg-gray-200 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center group">
+              <div className="w-0.5 h-8 bg-gray-400 rounded-full opacity-40 group-hover:opacity-100 group-hover:bg-blue-500 transition-all"></div>
             </PanelResizeHandle>
             
             {/* Target Editor Panel */}
             <Panel 
-              defaultSize={35} 
-              minSize={20} 
-              maxSize={50}
+              defaultSize={50} 
+              minSize={30} 
+              maxSize={70}
+              className="min-h-0 flex flex-col bg-white"
             >
-               <Editor
-                 ref={targetEditorRef}
-                 isEditable={true}
-                 editorId="target-editor"
-                 editorType="target"
-                 onSelectionChange={selectionHandler}
-                 mappings={mappings}
-                 showContentOnlyWhenBothLoaded={true}
-               />
-            </Panel>
-            
-            {/* Resize handle between editors and sidebar */}
-            <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center">
-              <div className="w-0.5 h-4 bg-gray-500 rounded-full opacity-60"></div>
-            </PanelResizeHandle>
-            
-            {/* Mapping Sidebar Panel */}
-            <Panel 
-              defaultSize={30} 
-              minSize={25} 
-              maxSize={40}
-            >
-              <MappingSidebar
-                mappings={mappings}
-              />
+              {/* Target Panel Header */}
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <h3 className="text-sm font-semibold text-gray-700">Target Text</h3>
+                </div>
+             
+              </div>
+              
+              {/* Target Editor Content */}
+                <Editor
+                  ref={targetEditorRef}
+                  isEditable={true}
+                  editorId="target-editor"
+                  editorType="target"
+                  onSelectionChange={selectionHandler}
+                  mappings={mappings}
+                  showContentOnlyWhenBothLoaded={true}
+                />
             </Panel>
           </PanelGroup>
         </div>
       ) : (
-        /* Placeholder when no text is loaded */
-        <div className="flex-1 min-h-0 flex items-center justify-center bg-gray-50">
-          <div className="text-center text-gray-500 max-w-md">
-            <div className="mb-4">
-              <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div className="text-lg font-medium mb-2 text-gray-700">Ready to Align Texts</div>
-            <div className="text-sm text-gray-600 mb-4">
-              Select or enter texts in the section above to begin creating alignments between source and target texts.
-            </div>
-            <div className="text-xs text-gray-500 bg-gray-100 rounded-lg p-3">
-              <div className="font-medium mb-1">Getting Started:</div>
-              <div className="text-left space-y-1">
-                <div>1. Enter or upload source text (e.g., Tibetan)</div>
-                <div>2. Enter or upload target text (e.g., English)</div>
-                <div>3. Click "Load" buttons to display editors</div>
-                <div>4. Select text portions to create mappings</div>
-              </div>
-            </div>
-          </div>
+        <div className="flex-1 min-h-0">
+          <UnifiedSelectionPanel />
         </div>
       )}
-      <div className='h-8 bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
-       {
-        mapAvailable ? <span>Only Enter and Undo (Ctrl+Z / Cmd+Z) keys are available for editing</span> : 
-        <span>Edit the translation/commentary text</span>
-       } 
+    
+      {/* Footer */}
+      <div className='h-8 shrink-0 bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
+        {
+         mapAvailable ? <span>Only Enter and Undo (Ctrl+Z / Cmd+Z) keys are available for editing</span> : 
+         <span>Edit the translation/commentary text</span>
+        } 
       </div>
     </div>
   );
