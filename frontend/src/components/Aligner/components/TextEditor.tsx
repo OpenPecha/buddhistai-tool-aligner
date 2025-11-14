@@ -58,18 +58,9 @@ function TextEditor({
   // Determine if we should show placeholder text instead of actual content
   const shouldShowPlaceholder = isLoadingAnnotations || (isTextLoaded && !annotationsApplied);
   
-  // Local UI state - show placeholder or actual text
-  let displayText = currentText;
-  if (!isTextLoaded && (!currentText || currentText === '')) {
-    displayText = root_text;
-  } else if (shouldShowPlaceholder) {
-    displayText = isLoadingAnnotations 
-      ? 'Loading annotations...\n\nPlease wait while we process the text segmentation.'
-      : 'Preparing text...\n\nAnnotations are being applied to ensure proper alignment.';
-  }
+ 
   
-  const [value, setValue] = React.useState(displayText);
-  const [currentSelection, setCurrentSelection] = React.useState<TextSelection | null>(null);
+  const [value, setValue] = React.useState(currentText ?? "");
 
   // Update value when store text changes or loading state changes
   React.useEffect(() => {
@@ -84,7 +75,6 @@ function TextEditor({
     
     setValue(newDisplayText);
     // Clear current selection when text changes
-    setCurrentSelection(null);
     if (onSelectionChange) {
       onSelectionChange.onSelectionClear(editorId);
     }
@@ -115,13 +105,11 @@ function TextEditor({
     if (onSelectionChange) {
       const range = selection.main;
       if (range.from === range.to) {
-        setCurrentSelection(null);
         onSelectionChange.onSelectionClear(editorId);
       } else {
         // For target editor, only allow selection if there's a source selection
         if (editorType === 'target' && !isSourceLoaded) {
           // Clear the selection and show a message
-          setCurrentSelection(null);
           return;
         }
         
@@ -133,7 +121,6 @@ function TextEditor({
           editorId
         };
         
-        setCurrentSelection(textSelection);
         onSelectionChange.onTextSelect(textSelection);
       }
     }
@@ -202,7 +189,6 @@ function TextEditor({
       // Find the line number at the top of the viewport
       const topLine = doc.lineAt(viewport.from);
       const lineNumber = topLine.number;
-      console.log('lineNumber', lineNumber);
       // Only sync if the line number has changed significantly (avoid micro-scrolls)
       if (Math.abs(lineNumber - lastScrollLineRef.current) >= 1) {
         lastScrollLineRef.current = lineNumber;
@@ -230,17 +216,91 @@ function TextEditor({
 
   const showSourceSelectionRequired = false;
 
-  // Create extension to block deletion keys (only when not fully editable)
+  // Create extension to handle backspace for line merging or block deletion keys
   const blockDeletionExtension = React.useMemo(() => {
-    // If fully editable, return empty extension (allow all keys)
+    // Command to merge current line with previous line when backspace is pressed at line start
+    const mergeLineCommand = (view: EditorView): boolean => {
+      const state = view.state;
+      const selection = state.selection.main;
+      const doc = state.doc;
+      
+      // Get the current line
+      const currentLine = doc.lineAt(selection.from);
+      
+      // Check if cursor is at the start of the line (not the first line)
+      if (selection.from === currentLine.from && currentLine.number > 1) {
+        // Get the previous line
+        const previousLine = doc.line(currentLine.number - 1);
+        
+        // Merge: previous line + current line (without the newline between them)
+        const previousLineText = previousLine.text;
+        const currentLineText = currentLine.text;
+        
+        // Determine if we need to add a space between the lines
+        const needsSpace = previousLineText.trim() && currentLineText.trim();
+        const spaceText = needsSpace ? ' ' : '';
+        
+        // Create the merged text - add a space if both lines have content
+        const mergedText = previousLineText + spaceText + currentLineText;
+        
+        // Calculate the new cursor position (at the junction where lines were merged)
+        // This is where the previous line ends, which is where the user's cursor was
+        const newCursorPos = previousLine.from + previousLineText.length + spaceText.length;
+        
+        // Replace the two lines with the merged line
+        const changes = {
+          from: previousLine.from,
+          to: currentLine.to,
+          insert: mergedText
+        };
+        
+        // Calculate the new text by applying the changes
+        const currentText = doc.toString();
+        const newText = currentText.slice(0, previousLine.from) + mergedText + currentText.slice(currentLine.to);
+        
+        // Apply the changes
+        view.dispatch({
+          changes,
+          selection: EditorSelection.cursor(newCursorPos)
+        });
+        
+        // Update the local value and store
+        setValue(newText);
+        
+        // If this is a target editor that should be editable, update the store
+        if (editorType === 'target' && (wasInitiallyEmptyTarget || targetLoadType === 'file')) {
+          setTargetTextFromFile(newText);
+        }
+        
+        return true; // Command handled
+      }
+      
+      return false; // Let default behavior handle it
+    };
+
+    // If fully editable, allow line merging but use default behavior for other deletions
     if (isFullyEditable) {
-      return [];
+      return Prec.highest(keymap.of([
+        {
+          key: 'Backspace',
+          run: mergeLineCommand,
+        },
+      ]));
     }
     
+    // For non-fully-editable editors, allow line merging but block other deletions
     return Prec.highest(keymap.of([
       {
         key: 'Backspace',
-        run: () => true, // Return true to prevent default behavior
+        run: (view) => {
+          // Try to merge line first
+          const merged = mergeLineCommand(view);
+          if (merged) {
+            return true; // Line was merged
+          }
+          // If not at line start, prevent default behavior
+          return true;
+        },
       },
       {
         key: 'Delete',
@@ -255,7 +315,7 @@ function TextEditor({
         run: () => true,
       },
     ]));
-  }, [isFullyEditable]);
+  }, [isFullyEditable, editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile]);
 
   // Create scroll synchronization extension
   const scrollSyncExtension = React.useMemo(() => {

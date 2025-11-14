@@ -133,7 +133,7 @@ function AlignerContent() {
               
               {/* Sidebar Content */}
               <div className="flex-1 min-h-0 overflow-auto">
-                <MappingSidebar mappings={mappings} />
+                <MappingSidebar />
               </div>
             </Panel>
           </PanelGroup>

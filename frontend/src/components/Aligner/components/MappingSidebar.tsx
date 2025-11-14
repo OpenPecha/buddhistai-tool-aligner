@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import type { TextMapping } from '../types';
 import { useEditorContext } from '../context';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { createAnnotation } from '../../../api/text';
@@ -8,19 +7,16 @@ import type { Annotations } from '../../../types/text';
 import { useTranslation } from 'react-i18next';
 import { generateAlignment } from '../utils/generateAnnotation';
 
-interface MappingSidebarProps {
-  mappings: TextMapping[];
-}
 
-const MappingSidebar: React.FC<MappingSidebarProps> = () => {
+
+const MappingSidebar = () => {
   const { t } = useTranslation();
   const { getSourceContent, getTargetContent } = useEditorContext();
-  const { sourceInstanceId, targetInstanceId } = useTextSelectionStore();
+  const { sourceInstanceId, targetInstanceId ,hasAlignment} = useTextSelectionStore();
   
   // Local state for success/error messages
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-
   // React Query mutation for creating annotation
   const createAnnotationMutation = useMutation<Annotations, Error, {
     inferenceId: string;
@@ -105,11 +101,16 @@ const MappingSidebar: React.FC<MappingSidebarProps> = () => {
         )}
 
         {/* Save Button */}
+        { hasAlignment && (
+          <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm text-green-800">{t('mapping.alignmentSavedSuccess')}</p>
+          </div>
+        ) }
         <button
           onClick={handleSave}
-          disabled={createAnnotationMutation.isPending || !sourceInstanceId || !targetInstanceId}
-          className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
+            disabled={hasAlignment}
+            className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
           {createAnnotationMutation.isPending ? 'Saving...' : 'Save'}
         </button>
       </div>

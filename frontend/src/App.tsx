@@ -5,6 +5,7 @@ import './index.css';
 import Home from './components/Home';
 import FormatterPage from './pages/FormatterPage';
 import AlignerPage from './pages/AlignerPage';
+import AlignmentWorkstation from './components/Aligner/components/AlignmentWorkstation';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -25,6 +26,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/formatter" element={<FormatterPage />} />
             <Route path="/aligner" element={<AlignerPage />} />
+            <Route path="/aligner/:sourceInstanceId/:targetInstanceId" element={<AlignmentWorkstation/>} />
           </Routes>
         </Router>
       </div>

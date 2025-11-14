@@ -1,6 +1,8 @@
 import React from 'react';
 import { useRelatedInstances, type RelatedInstance } from '../hooks/useRelatedInstances';
 import { getLanguageFromCode } from '../utils/languageUtils';
+import { RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface RelatedInstanceResponse {
   instance_id: string;
@@ -35,7 +37,7 @@ export function RelatedInstancesPanel({
   onCreateTranslation,
   onCreateCommentary,
 }: RelatedInstancesPanelProps) {
-  const { data: relatedInstances = [], isLoading: isLoadingRelatedInstances, error: relatedInstancesError } = useRelatedInstances(
+  const { data: relatedInstances = [], isLoading: isLoadingRelatedInstances, error: relatedInstancesError,refetch: refetchRelatedInstances } = useRelatedInstances(
     sourceInstanceId
   );
 
@@ -94,9 +96,17 @@ export function RelatedInstancesPanel({
     <div className="rounded-lg">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className=" flex text-lg font-medium text-gray-900 mb-2">
             Align with Existing Text
+            <button
+            onClick={() => refetchRelatedInstances()}
+            className=" ml-2 text-sm font-medium rounded-md focus:ring-offset-2 transition-colors flex items-center gap-2"
+            disabled={isLoadingRelatedInstances}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoadingRelatedInstances ? 'animate-spin' : ''}`} />
+          </button>
           </h3>
+     
           <p className="text-sm text-gray-600">
             Select a related translation or commentary to align with, or create a new one:
           </p>
@@ -128,7 +138,7 @@ export function RelatedInstancesPanel({
         </div>
       </div>
 
-     <AlignmentList isLoadingRelatedInstances={isLoadingRelatedInstances} relatedInstancesError={relatedInstancesError} availableTargetInstances={availableTargetInstances} selectedTargetInstanceId={selectedTargetInstanceId} onTargetInstanceSelect={onTargetInstanceSelect} getInstanceTitle={getInstanceTitle} getInstanceMetadata={getInstanceMetadata}/>
+     <AlignmentList isLoadingRelatedInstances={isLoadingRelatedInstances} relatedInstancesError={relatedInstancesError} availableTargetInstances={availableTargetInstances} selectedTargetInstanceId={selectedTargetInstanceId} sourceInstanceId={sourceInstanceId} onTargetInstanceSelect={onTargetInstanceSelect} getInstanceTitle={getInstanceTitle} getInstanceMetadata={getInstanceMetadata}/>
     </div>
   );
 }
@@ -141,6 +151,7 @@ const AlignmentList = ({
   relatedInstancesError,
   availableTargetInstances,
   selectedTargetInstanceId,
+  sourceInstanceId,
   onTargetInstanceSelect,
   getInstanceTitle,
   getInstanceMetadata,
@@ -149,10 +160,12 @@ const AlignmentList = ({
   relatedInstancesError: Error | null;
   availableTargetInstances: RelatedInstance[];
   selectedTargetInstanceId: string | null;
+  sourceInstanceId: string | null;
   onTargetInstanceSelect: (instanceId: string, hasAlignment: boolean) => void;
   getInstanceTitle: (instance: RelatedInstance) => string;
   getInstanceMetadata: (instance: RelatedInstance) => { language: string; relationship: string; hasAlignment: boolean };
 }) => {
+  const navigate = useNavigate();
 
 
   if (isLoadingRelatedInstances) {
@@ -199,10 +212,18 @@ return (
         const title = getInstanceTitle(instance);
         const { language, relationship, hasAlignment } = getInstanceMetadata(instance);
 
+        const handleClick = () => {
+          if (sourceInstanceId && instanceId) {
+            navigate(`/aligner/${sourceInstanceId}/${instanceId}`);
+          } else {
+            onTargetInstanceSelect(instanceId, hasAlignment);
+          }
+        };
+
         return (
           <button
             key={instanceId}
-            onClick={() => onTargetInstanceSelect(instanceId,hasAlignment)}
+            onClick={handleClick}
             className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-md relative ${
               isSelected
                 ? 'border-blue-500 bg-blue-50 shadow-sm'

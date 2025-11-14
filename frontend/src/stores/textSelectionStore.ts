@@ -21,6 +21,8 @@ interface TextSelectionState {
   loadingMessage: string | null; // Custom loading message
   annotationsApplied: boolean; // Track if annotations have been applied
   
+  hasAlignment: boolean;
+  
   // Actions
   setSourceText: (textId: string, instanceId: string, content: string, loadType?: 'database' | 'file') => void;
   setTargetText: (textId: string, instanceId: string, content: string, loadType?: 'database' | 'file') => void;
@@ -35,6 +37,8 @@ interface TextSelectionState {
   // Loading state actions
   setLoadingAnnotations: (isLoading: boolean, message?: string) => void;
   setAnnotationsApplied: (applied: boolean) => void;
+  setHasAlignment:(hasAlignment: boolean) => void;
+  resetAllSelections: () => void;
 }
 
 export const useTextSelectionStore = create<TextSelectionState>((set) => ({
@@ -57,7 +61,13 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
   isLoadingAnnotations: false,
   loadingMessage: null,
   annotationsApplied: false,
+
+  hasAlignment: false,
   
+  setHasAlignment: (hasAlignment: boolean) =>
+    set({
+      hasAlignment: hasAlignment,
+    }),
   // Actions
   setSourceText: (textId: string, instanceId: string, content: string, loadType: 'database' | 'file' = 'database') =>
     set({
@@ -77,7 +87,7 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       isTargetLoaded: true,
       targetLoadType: loadType,
       targetType: loadType === 'database' ? 'translation' : null, // Auto-set to translation for database texts
-      annotationsApplied: false, // Reset annotations state when new text is loaded
+      annotationsApplied: true, // Reset annotations state when new text is loaded
     }),
 
   setSourceTextFromFile: (content: string) =>
@@ -174,4 +184,15 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
       annotationsApplied: applied,
       isLoadingAnnotations: !applied, // If annotations are applied, we're not loading
     }),
+  resetAllSelections: () =>
+    set({
+      sourceTextId: null,
+      sourceInstanceId: null,
+      sourceText: '',
+      isSourceLoaded: false,
+      sourceLoadType: null,
+      targetTextId: null,
+      targetInstanceId: null,
+      targetText: '',
+    })
 }));

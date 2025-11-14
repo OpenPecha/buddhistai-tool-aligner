@@ -23,6 +23,7 @@ import {
 } from "../../../lib/annotation";
 import { reconstructSegments } from "../utils/generateAnnotation";
 import type { OpenPechaTextInstance } from "../../../types/text";
+import { prepareData } from "../utils/prepare_data";
 
 function UnifiedSelectionPanel() {
   const {
@@ -38,8 +39,10 @@ function UnifiedSelectionPanel() {
     setTargetText,
     setLoadingAnnotations,
     setAnnotationsApplied,
+    setHasAlignment,
   } = useTextSelectionStore();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   // Source selection state
   const [selectedTextId, setSelectedTextId] = React.useState<string>(
     sourceTextId || ""
@@ -48,14 +51,16 @@ function UnifiedSelectionPanel() {
     string | null
   >(sourceInstanceId || null);
 
+  const urlSourceId = searchParams.get("s_id");
+  const urlTargetId = searchParams.get("t_id");
+  
+
   // Target selection state
   const [selectedTargetInstanceId, setSelectedTargetInstanceId] =
     React.useState<string | null>(targetInstanceId || null);
   const [selectedAnnotationId, setSelectedAnnotationId] = React.useState<
     string | null
   >(null);
-
-  const [searchParams, setSearchParams] = useSearchParams();
 
   // BDRC search hook
   const {
@@ -92,12 +97,6 @@ function UnifiedSelectionPanel() {
     return Array.isArray(instancesData) ? instancesData : [];
   }, [instancesData]);
 
-  // Sync local state with store state
-  React.useEffect(() => {
-    setSelectedTextId(sourceTextId || "");
-    setSelectedInstanceId(sourceInstanceId || null);
-    setSelectedTargetInstanceId(targetInstanceId || null);
-  }, [sourceTextId, sourceInstanceId, targetInstanceId]);
 
   // Update source selection in store (but don't update URL params automatically)
   React.useEffect(() => {
@@ -111,558 +110,6 @@ function UnifiedSelectionPanel() {
     }
   }, [instanceData, selectedInstanceId, selectedTextId, setSourceSelection]);
 
-  // Track if we've loaded from URL to prevent re-loading
-  const [hasLoadedFromUrl, setHasLoadedFromUrl] = React.useState(false);
-
-  // Load texts from URL parameters on mount
-  React.useEffect(() => {
-    const urlSourceId = searchParams.get("s_id");
-    const urlTargetId = searchParams.get("t_id");
-    if(!urlSourceId || !urlTargetId) return;
-    if (
-      !hasLoadedFromUrl &&
-      !isSourceLoaded &&
-      !isTargetLoaded
-    ) {
-      const loadFromUrl = async () => {
-        try {
-          setHasLoadedFromUrl(true);
-          setLoadingAnnotations(true, "Loading from URL parameters...");
-
-          if (!urlSourceId) {
-            console.error("Source instance ID (s_id) is required");
-            setLoadingAnnotations(false);
-            return;
-          }
-          
-          // Fetch the source instance
-          const sourceInstanceData = await fetchInstance(urlSourceId);
-          
-          // Try to get text_id from instance response (might be in response even if not in type)
-          let sourceTextIdFromInstance: string = urlSourceId; // Default fallback
-          
-          // Check if text_id exists in the response (even if not in type definition)
-          interface InstanceWithTextId extends OpenPechaTextInstance {
-            text_id?: string;
-          }
-          const instanceWithTextId = sourceInstanceData as InstanceWithTextId;
-          if (instanceWithTextId.text_id && typeof instanceWithTextId.text_id === 'string') {
-            sourceTextIdFromInstance = instanceWithTextId.text_id;
-          }
-          
-          // Set source selection
-          setSelectedTextId(sourceTextIdFromInstance);
-          setSelectedInstanceId(urlSourceId);
-          setSourceSelection(sourceTextIdFromInstance, urlSourceId);
-
-          // If target ID is provided, fetch related instances and load alignment
-          if (urlTargetId) {
-            // Fetch related instances for the source instance
-            const relatedInstancesList = await fetchRelatedInstances(urlSourceId);
-
-            // Find the target instance in related instances
-            const targetInstance = relatedInstancesList.find(
-              (instance) => (instance.instance_id || instance.id) === urlTargetId
-            );
-
-            if (!targetInstance) {
-              console.error("Target instance not found in related instances");
-              setLoadingAnnotations(false);
-              return;
-            }
-
-            // Check if target instance has alignment annotation
-            // Match the logic from RelatedInstancesPanel.getInstanceMetadata
-            let annotationId: string | null = null;
-            let hasAlignment = false;
-            
-            // Check for new format (has 'annotation' property as string)
-            if (
-              "annotation" in targetInstance &&
-              typeof targetInstance.annotation === "string" &&
-              targetInstance.annotation
-            ) {
-              annotationId = targetInstance.annotation;
-              hasAlignment = true;
-            } 
-            // Check for old format (has 'annotations' array)
-            else if (
-              targetInstance.annotations &&
-              Array.isArray(targetInstance.annotations)
-            ) {
-              // Look for alignment type annotation
-              const alignmentAnn = targetInstance.annotations.find(
-                (ann) => ann.type === "alignment"
-              );
-              if (alignmentAnn?.annotation_id) {
-                annotationId = alignmentAnn.annotation_id;
-                hasAlignment = true;
-              }
-            }
-            // Also check if annotations is an object (old format from instance annotations)
-            else if (
-              targetInstance.annotations &&
-              typeof targetInstance.annotations === "object" &&
-              !Array.isArray(targetInstance.annotations)
-            ) {
-              // Check if any annotation has type === 'alignment'
-              const annotationsObj = targetInstance.annotations as Record<string, unknown[]>;
-              const hasAlignmentAnnotation = Object.values(annotationsObj).some((annArray) =>
-                Array.isArray(annArray) &&
-                annArray.some(
-                  (ann: unknown) =>
-                    typeof ann === "object" &&
-                    ann !== null &&
-                    "type" in ann &&
-                    (ann as { type: string }).type === "alignment"
-                )
-              );
-              
-              if (hasAlignmentAnnotation) {
-                // Try to extract annotation ID from alignment annotation
-                for (const annArray of Object.values(annotationsObj)) {
-                  if (Array.isArray(annArray)) {
-                    const alignmentAnn = annArray.find(
-                      (ann: unknown) =>
-                        typeof ann === "object" &&
-                        ann !== null &&
-                        "type" in ann &&
-                        (ann as { type: string }).type === "alignment" &&
-                        "annotation_id" in ann
-                    );
-                    if (alignmentAnn && typeof alignmentAnn === "object" && "annotation_id" in alignmentAnn) {
-                      annotationId = (alignmentAnn as { annotation_id: string }).annotation_id;
-                      hasAlignment = true;
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-
-            setSelectedTargetInstanceId(urlTargetId);
-            setSelectedAnnotationId(annotationId);
-
-            if (hasAlignment && annotationId) {
-              // Load alignment annotation
-              setLoadingAnnotations(true, "Fetching alignment annotation...");
-
-              try {
-                // Fetch alignment annotation and both instances in parallel
-                const [
-                  alignmentAnnotationData,
-                  sourceInstanceData,
-                  targetInstanceData,
-                ] = await Promise.all([
-                  fetchAnnotation(annotationId),
-                  fetchInstance(urlSourceId),
-                  fetchInstance(urlTargetId),
-                ]);
-
-                // Extract alignment data from annotation response
-                interface AlignmentAnnotationData {
-                  alignment_annotation: Array<{
-                    id: string;
-                    span: {
-                      start: number;
-                      end: number;
-                    };
-                    index: number;
-                    alignment_index: number[];
-                  }>;
-                  target_annotation: Array<{
-                    id: string;
-                    span: {
-                      start: number;
-                      end: number;
-                    };
-                    index: number;
-                  }>;
-                }
-
-                interface AlignmentAnnotationResponse {
-                  id: string;
-                  type: string;
-                  data: AlignmentAnnotationData;
-                }
-
-                const annotationData = (
-                  alignmentAnnotationData as unknown as AlignmentAnnotationResponse
-                ).data;
-
-                if (
-                  !annotationData?.target_annotation ||
-                  !Array.isArray(annotationData.target_annotation) ||
-                  !annotationData?.alignment_annotation ||
-                  !Array.isArray(annotationData.alignment_annotation)
-                ) {
-                  console.error("Invalid alignment annotation structure");
-                  setLoadingAnnotations(false);
-                  return;
-                }
-
-                // Get text content
-                const sourceContent = sourceInstanceData.content || "";
-                const targetContent = targetInstanceData.content || "";
-
-                // Reconstruct segments from alignment annotations
-                const { source, target } = reconstructSegments(
-                  annotationData.target_annotation,
-                  annotationData.alignment_annotation,
-                  sourceContent,
-                  targetContent
-                );
-
-                // Join segments with newlines to create segmented text
-                const segmentedSourceText = source.join("\n");
-                const segmentedTargetText = target.join("\n");
-
-                // Load the source and target on editor
-                setSourceText(
-                  sourceTextIdFromInstance,
-                  urlSourceId,
-                  segmentedSourceText,
-                  "database"
-                );
-
-                setTargetText(
-                  `related-${urlTargetId}`,
-                  urlTargetId,
-                  segmentedTargetText,
-                  "database"
-                );
-
-                setAnnotationsApplied(true);
-                setLoadingAnnotations(false);
-
-                // Update search params
-                setSearchParams((prev) => {
-                  prev.set("s_id", urlSourceId);
-                  prev.set("t_id", urlTargetId);
-                  return prev;
-                });
-              } catch (error) {
-                console.error("Error processing alignment annotation:", error);
-                setLoadingAnnotations(false);
-                setAnnotationsApplied(true);
-              }
-            } else {
-              // No alignment - use segmentation
-              setLoadingAnnotations(true, "Fetching segmentation annotations...");
-
-              try {
-                // Fetch both source and target instances
-                const [sourceInstanceData, targetInstanceData] = await Promise.all([
-                  fetchInstance(urlSourceId),
-                  fetchInstance(urlTargetId),
-                ]);
-
-                // Helper function to extract segmentation annotation ID from instance
-                const getSegmentationAnnotationId = (
-                  instanceData: OpenPechaTextInstance
-                ): string | null => {
-                  if (
-                    !instanceData?.annotations ||
-                    typeof instanceData.annotations !== "object"
-                  ) {
-                    return null;
-                  }
-
-                  interface AnnotationWithId {
-                    annotation_id?: string;
-                    type?: string;
-                  }
-
-                  const annotation = Object.values(instanceData.annotations)
-                    .flat()
-                    .find(
-                      (ann): ann is AnnotationWithId =>
-                        ann !== null &&
-                        typeof ann === "object" &&
-                        "annotation_id" in ann &&
-                        "type" in ann &&
-                        (ann as AnnotationWithId).type === "segmentation"
-                    );
-
-                  return annotation?.annotation_id || null;
-                };
-
-                // Get segmentation annotation IDs
-                const sourceSegmentationAnnotationId =
-                  getSegmentationAnnotationId(sourceInstanceData);
-                const targetSegmentationAnnotationId =
-                  getSegmentationAnnotationId(targetInstanceData);
-
-                // Fetch segmentation annotations if available
-                let sourceSegmentation: Array<{
-                  span: { start: number; end: number };
-                }> | null = null;
-                let targetSegmentation: Array<{
-                  span: { start: number; end: number };
-                }> | null = null;
-
-                interface AnnotationResponse {
-                  annotation?: Array<{ span: { start: number; end: number } }>;
-                  data?: Array<{ span: { start: number; end: number } }>;
-                }
-
-                // Helper function to extract segmentation array from annotation response
-                const extractSegmentationArray = (
-                  annotationData: unknown
-                ): Array<{ span: { start: number; end: number } }> | null => {
-                  if (Array.isArray(annotationData)) {
-                    return annotationData;
-                  }
-
-                  if (annotationData && typeof annotationData === "object") {
-                    const response = annotationData as AnnotationResponse;
-                    // Check for 'data' property first (new format)
-                    if (response.data && Array.isArray(response.data)) {
-                      return response.data;
-                    }
-                    // Check for 'annotation' property (legacy format)
-                    if (response.annotation && Array.isArray(response.annotation)) {
-                      return response.annotation;
-                    }
-                  }
-
-                  return null;
-                };
-
-                if (sourceSegmentationAnnotationId) {
-                  try {
-                    const sourceAnnotationData = await fetchAnnotation(
-                      sourceSegmentationAnnotationId
-                    );
-                    sourceSegmentation =
-                      extractSegmentationArray(sourceAnnotationData);
-                  } catch (error) {
-                    console.warn(
-                      "Failed to fetch source segmentation annotation:",
-                      error
-                    );
-                  }
-                }
-
-                if (targetSegmentationAnnotationId) {
-                  try {
-                    const targetAnnotationData = await fetchAnnotation(
-                      targetSegmentationAnnotationId
-                    );
-                    targetSegmentation =
-                      extractSegmentationArray(targetAnnotationData);
-                  } catch (error) {
-                    console.warn(
-                      "Failed to fetch target segmentation annotation:",
-                      error
-                    );
-                  }
-                }
-
-                // If no segmentation annotation found, try extracting from instance annotations
-                sourceSegmentation ??= extractInstanceSegmentation(
-                  sourceInstanceData.annotations
-                );
-                targetSegmentation ??= extractInstanceSegmentation(
-                  targetInstanceData.annotations
-                );
-
-                // Get text content
-                const sourceContent = sourceInstanceData.content || "";
-                const targetContent = targetInstanceData.content || "";
-
-                // Apply segmentation to text
-                let segmentedSourceText: string;
-                let segmentedTargetText: string;
-
-                if (sourceSegmentation && sourceSegmentation.length > 0) {
-                  segmentedSourceText = applySegmentation(
-                    sourceContent,
-                    sourceSegmentation
-                  );
-                } else {
-                  // Fallback to file segmentation if no instance segmentation
-                  const sourceSegmentations = generateFileSegmentation(sourceContent);
-                  segmentedSourceText = applySegmentation(
-                    sourceContent,
-                    sourceSegmentations
-                  );
-                }
-
-                if (targetSegmentation && targetSegmentation.length > 0) {
-                  segmentedTargetText = applySegmentation(
-                    targetContent,
-                    targetSegmentation
-                  );
-                } else {
-                  // Fallback to file segmentation if no instance segmentation
-                  const targetSegmentations = generateFileSegmentation(targetContent);
-                  segmentedTargetText = applySegmentation(
-                    targetContent,
-                    targetSegmentations
-                  );
-                }
-
-                // Load the source and target on editor
-                setSourceText(
-                  sourceTextIdFromInstance,
-                  urlSourceId,
-                  segmentedSourceText,
-                  "database"
-                );
-
-                setTargetText(
-                  `related-${urlTargetId}`,
-                  urlTargetId,
-                  segmentedTargetText,
-                  "database"
-                );
-
-                setAnnotationsApplied(true);
-                setLoadingAnnotations(false);
-
-                // Update search params
-                setSearchParams((prev) => {
-                  prev.set("s_id", urlSourceId);
-                  prev.set("t_id", urlTargetId);
-                  prev.delete("tTextId");
-                  prev.delete("tInstanceId");
-                  return prev;
-                });
-              } catch (error) {
-                console.error("Error processing segmentation:", error);
-                setLoadingAnnotations(false);
-                setAnnotationsApplied(true);
-              }
-            }
-          } else {
-            // No target ID provided - just load source text
-            try {
-              // Reuse the already-fetched source instance data
-              
-              // Try to get segmentation for source
-              const getSegmentationAnnotationId = (
-                instanceData: OpenPechaTextInstance
-              ): string | null => {
-                if (
-                  !instanceData?.annotations ||
-                  typeof instanceData.annotations !== "object"
-                ) {
-                  return null;
-                }
-
-                interface AnnotationWithId {
-                  annotation_id?: string;
-                  type?: string;
-                }
-
-                const annotation = Object.values(instanceData.annotations)
-                  .flat()
-                  .find(
-                    (ann): ann is AnnotationWithId =>
-                      ann !== null &&
-                      typeof ann === "object" &&
-                      "annotation_id" in ann &&
-                      "type" in ann &&
-                      (ann as AnnotationWithId).type === "segmentation"
-                  );
-
-                return annotation?.annotation_id || null;
-              };
-
-              const sourceSegmentationAnnotationId =
-                getSegmentationAnnotationId(sourceInstanceData);
-
-              let sourceSegmentation: Array<{
-                span: { start: number; end: number };
-              }> | null = null;
-
-              if (sourceSegmentationAnnotationId) {
-                try {
-                  const sourceAnnotationData = await fetchAnnotation(
-                    sourceSegmentationAnnotationId
-                  );
-                  
-                  interface AnnotationResponse {
-                    annotation?: Array<{ span: { start: number; end: number } }>;
-                    data?: Array<{ span: { start: number; end: number } }>;
-                  }
-                  
-                  if (Array.isArray(sourceAnnotationData)) {
-                    sourceSegmentation = sourceAnnotationData;
-                  } else if (sourceAnnotationData && typeof sourceAnnotationData === "object") {
-                    const response = sourceAnnotationData as AnnotationResponse;
-                    if (response.data && Array.isArray(response.data)) {
-                      sourceSegmentation = response.data;
-                    } else if (response.annotation && Array.isArray(response.annotation)) {
-                      sourceSegmentation = response.annotation;
-                    }
-                  }
-                } catch (error) {
-                  console.warn("Failed to fetch source segmentation annotation:", error);
-                }
-              }
-
-              // If no segmentation annotation found, try extracting from instance annotations
-              sourceSegmentation ??= extractInstanceSegmentation(
-                sourceInstanceData.annotations
-              );
-
-              // Get text content
-              const sourceContent = sourceInstanceData.content || "";
-
-              // Apply segmentation to text
-              let segmentedSourceText: string;
-
-              if (sourceSegmentation && sourceSegmentation.length > 0) {
-                segmentedSourceText = applySegmentation(
-                  sourceContent,
-                  sourceSegmentation
-                );
-              } else {
-                // Fallback to file segmentation if no instance segmentation
-                const sourceSegmentations = generateFileSegmentation(sourceContent);
-                segmentedSourceText = applySegmentation(
-                  sourceContent,
-                  sourceSegmentations
-                );
-              }
-
-              // Load the source text on editor
-              setSourceText(
-                sourceTextIdFromInstance,
-                urlSourceId,
-                segmentedSourceText,
-                "database"
-              );
-
-              setAnnotationsApplied(true);
-              setLoadingAnnotations(false);
-
-              // Update search params
-              setSearchParams((prev) => {
-                prev.set("s_id", urlSourceId);
-                prev.delete("t_id");
-                prev.delete("tTextId");
-                prev.delete("tInstanceId");
-                return prev;
-              });
-            } catch (error) {
-              console.error("Error loading source text:", error);
-              setLoadingAnnotations(false);
-              setAnnotationsApplied(true);
-            }
-          }
-        } catch (error) {
-          console.error("Error loading source from URL parameters:", error);
-          setHasLoadedFromUrl(false);
-          setLoadingAnnotations(false);
-        }
-      };
-
-      loadFromUrl();
-    }
-  }, []);
 
   // Handle BDRC result selection - wraps the hook handler to also set text ID
   const handleBdrcResultSelect = React.useCallback(
@@ -1125,15 +572,13 @@ function UnifiedSelectionPanel() {
 
   // Load target after source is loaded and related instances are available
   React.useEffect(() => {
-    const urlTargetId = searchParams.get("t_id");
 
     // Load target if t_id is present, source is loaded, and target isn't loaded yet
     if (
       urlTargetId &&
       sourceInstanceId &&
       !isTargetLoaded &&
-      relatedInstances.length > 0 &&
-      hasLoadedFromUrl
+      relatedInstances.length > 0
     ) {
       const targetInstance = relatedInstances.find(
         (instance) => (instance.instance_id || instance.id) === urlTargetId
@@ -1164,7 +609,6 @@ function UnifiedSelectionPanel() {
     isTargetLoaded,
     relatedInstances,
     handleTargetInstanceSelection,
-    hasLoadedFromUrl,
     setSelectedAnnotationId,
   ]);
 

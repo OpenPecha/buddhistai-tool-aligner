@@ -3,8 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchInstance } from '../../../api/text';
 import { useEditorContext } from '../context';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 function TextNavigationBar() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { 
     clearAllSelections,
@@ -13,7 +15,8 @@ function TextNavigationBar() {
     sourceLoadType,
     targetLoadType,
     isSourceLoaded,
-    isTargetLoaded
+    isTargetLoaded,
+    resetAllSelections
   } = useTextSelectionStore();
   const { isScrollSyncEnabled, setScrollSyncEnabled} = useEditorContext();
 
@@ -104,6 +107,8 @@ function TextNavigationBar() {
 
   const handleReset = () => {
     clearAllSelections();
+    resetAllSelections();
+    navigate('/aligner');
   };
 
   return (
