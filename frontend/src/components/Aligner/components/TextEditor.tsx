@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorSelection, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useEditorContext } from '../context';
-import { root_text } from '../../../data/text';
 
 interface TextEditorProps {
   readonly ref: React.RefObject<ReactCodeMirrorRef | null> | null;
@@ -27,7 +26,7 @@ function TextEditor({
   fontSize
 }: TextEditorProps) {
   // Editor context for scroll synchronization
-  const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing } = useEditorContext();
+  const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing, setOriginalSourceText, setOriginalTargetText } = useEditorContext();
   
   // Zustand store
   const {
@@ -61,6 +60,7 @@ function TextEditor({
  
   
   const [value, setValue] = React.useState(currentText ?? "");
+  const originalTextRef = React.useRef<string>("");
 
   // Update value when store text changes or loading state changes
   React.useEffect(() => {
@@ -74,11 +74,23 @@ function TextEditor({
     }
     
     setValue(newDisplayText);
+    
+    // Store original text when it's first loaded (not placeholder)
+    if (!shouldShowPlaceholder && newDisplayText && newDisplayText !== originalTextRef.current) {
+      originalTextRef.current = newDisplayText;
+      // Update the context with original text
+      if (editorType === 'source') {
+        setOriginalSourceText(newDisplayText);
+      } else {
+        setOriginalTargetText(newDisplayText);
+      }
+    }
+    
     // Clear current selection when text changes
     if (onSelectionChange) {
       onSelectionChange.onSelectionClear(editorId);
     }
-  }, [currentText, editorId, onSelectionChange, shouldShowPlaceholder, isLoadingAnnotations]);
+  }, [currentText, editorId, onSelectionChange, shouldShowPlaceholder, isLoadingAnnotations, editorType, setOriginalSourceText, setOriginalTargetText]);
   
   const onChange = React.useCallback((val: string) => {
     
@@ -87,13 +99,31 @@ function TextEditor({
       return;
     }
     
-    setValue(val);
-    
-    // If this is a target editor that should be editable, update the store with the new content
-    if (editorType === 'target' && (wasInitiallyEmptyTarget || targetLoadType === 'file')) {
-      setTargetTextFromFile(val);
+    // If fully editable (empty target), allow all changes
+    if (isFullyEditable) {
+      setValue(val);
+      if (editorType === 'target' && (wasInitiallyEmptyTarget || targetLoadType === 'file')) {
+        setTargetTextFromFile(val);
+      }
+      return;
     }
-  }, [editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile, shouldShowPlaceholder]);
+    
+    // For non-fully-editable editors, validate that only newlines were added/removed
+    const originalText = originalTextRef.current;
+    
+    // Remove all newlines and compare content
+    const originalContent = originalText.replaceAll('\n', '');
+    const newContent = val.replaceAll('\n', '');
+    
+    // If content (without newlines) changed, reject the change
+    if (originalContent !== newContent) {
+      // Revert to previous value
+      return;
+    }
+    
+    // Only newlines were added/removed - allow the change
+    setValue(val);
+  }, [editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile, shouldShowPlaceholder, isFullyEditable]);
 
   // Handle text selection
   const handleSelectionChange = React.useCallback((selection: EditorSelection) => {
@@ -372,6 +402,45 @@ function TextEditor({
     });
   }, [handleCursorChange]);
 
+  // Create extension to prevent text input except newlines
+  const preventTextInputExtension = React.useMemo(() => {
+    if (isFullyEditable) {
+      return []; // Allow all input for fully editable editors
+    }
+
+    // Use transaction filter to prevent invalid changes
+    return EditorView.updateListener.of((update) => {
+      // Check if this is a user input event
+      if (!update.transactions.some(tr => tr.isUserEvent('input'))) {
+        return;
+      }
+
+      const originalText = originalTextRef.current;
+      if (!originalText) return;
+
+      // Get the new document content
+      const newText = update.state.doc.toString();
+      
+      // Remove all newlines and compare content
+      const originalContent = originalText.replaceAll('\n', '');
+      const newContent = newText.replaceAll('\n', '');
+      
+      // If content (without newlines) changed, revert the change
+      if (originalContent !== newContent) {
+        // Use setTimeout to avoid dispatch during update
+        setTimeout(() => {
+          update.view.dispatch({
+            changes: {
+              from: 0,
+              to: update.view.state.doc.length,
+              insert: originalText
+            }
+          });
+        }, 0);
+      }
+    });
+  }, [isFullyEditable]);
+
 
   return (
     <div className="editor-container box-border relative h-full w-full" 
@@ -407,6 +476,8 @@ function TextEditor({
             EditorView.lineWrapping,
             // Block deletion keys at editor level
             blockDeletionExtension,
+            // Prevent text input except newlines
+            preventTextInputExtension,
             // Scroll synchronization
             scrollSyncExtension,
             // Click synchronization

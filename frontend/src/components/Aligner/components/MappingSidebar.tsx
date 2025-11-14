@@ -11,8 +11,9 @@ import { generateAlignment } from '../utils/generateAnnotation';
 
 const MappingSidebar = () => {
   const { t } = useTranslation();
-  const { getSourceContent, getTargetContent } = useEditorContext();
+  const { getSourceContent, getTargetContent, isContentValid } = useEditorContext();
   const { sourceInstanceId, targetInstanceId ,hasAlignment} = useTextSelectionStore();
+  const [isContentInvalid, setIsContentInvalid] = React.useState(false);
   
   // Local state for success/error messages
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -49,10 +50,32 @@ const MappingSidebar = () => {
   });
 
 
+  // Check content validity periodically
+  React.useEffect(() => {
+    const checkValidity = () => {
+      const isValid = isContentValid();
+      setIsContentInvalid(!isValid);
+    };
+    
+    // Check immediately
+    checkValidity();
+    
+    // Check periodically (every 500ms)
+    const interval = setInterval(checkValidity, 500);
+    
+    return () => clearInterval(interval);
+  }, [isContentValid]);
+
   // Handle saving alignment annotation
   const handleSave = () => {
     if (!sourceInstanceId || !targetInstanceId) {
       setSaveError(t('mapping.sourceAndTargetRequired'));
+      return;
+    }
+
+    // Validate content before saving
+    if (!isContentValid()) {
+      setSaveError('Content has been modified. Only adding or removing newlines is allowed.');
       return;
     }
 
@@ -106,9 +129,17 @@ const MappingSidebar = () => {
             <p className="text-sm text-green-800">{t('mapping.alignmentSavedSuccess')}</p>
           </div>
         ) }
+        {/* Warning message if content is invalid */}
+        {isContentInvalid && (
+          <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">
+              Content has been modified. Only adding or removing newlines is allowed. Please revert changes to save.
+            </p>
+          </div>
+        )}
         <button
           onClick={handleSave}
-            disabled={hasAlignment}
+            disabled={hasAlignment || isContentInvalid}
             className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
           {createAnnotationMutation.isPending ? 'Saving...' : 'Save'}

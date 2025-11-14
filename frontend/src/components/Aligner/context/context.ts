@@ -40,6 +40,9 @@ export interface EditorContextValue {
   externalAlignmentData: ExternalAlignmentData | null;
   setExternalAlignmentData: (data: ExternalAlignmentData | null) => void;
   loadAlignmentData: (data: ExternalAlignmentData) => void;
+  setOriginalSourceText: (text: string) => void;
+  setOriginalTargetText: (text: string) => void;
+  isContentValid: () => boolean;
 }
 
 export const EditorContext = createContext<EditorContextValue | undefined>(undefined);

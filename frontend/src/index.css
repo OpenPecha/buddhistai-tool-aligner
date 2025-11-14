@@ -73,8 +73,10 @@ html, body, #root {
 .editor-container .cm-editor {
   width: 100% !important;
   max-width: 100% !important;
+
+  overflow-y: auto !important;
   overflow-x: hidden !important;
-  height: 100% !important;
+  height: 90vh !important;
   min-height: 0 !important;
   flex: 1 1 0%;
   display: flex;
@@ -84,11 +86,12 @@ html, body, #root {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
+  cursor: text !important;
 }
 
 .editor-container .cm-scroller {
   overflow-x: hidden !important;
-  overflow-y: hidden !important;
+  overflow-y: auto !important;
   height: 100% !important;
   min-height: 0 !important;
   flex: 1 1 0%;
@@ -97,6 +100,7 @@ html, body, #root {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
+  pointer-events: auto !important;
 }
 
 .editor-container .cm-content {
@@ -119,6 +123,7 @@ html, body, #root {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
+  pointer-events: none !important;
 }
 
 .editor-container:hover .selection-indicator {

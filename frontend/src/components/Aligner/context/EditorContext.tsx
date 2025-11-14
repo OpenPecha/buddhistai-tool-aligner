@@ -11,6 +11,8 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
   const isScrollSyncing = useRef<boolean>(false);
   const [isScrollSyncEnabled, setScrollSyncEnabled] = React.useState<boolean>(true);
   const [externalAlignmentData, setExternalAlignmentData] = React.useState<ExternalAlignmentData | null>(null);
+  const originalSourceTextRef = useRef<string>('');
+  const originalTargetTextRef = useRef<string>('');
 
   // Utility function to load alignment data from API response
   const loadAlignmentData = useCallback((alignmentResponse: ExternalAlignmentData) => {
@@ -24,6 +26,49 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
   const getTargetContent = useCallback(() => {
     return targetEditorRef.current?.view?.state.doc.toString();
   }, []);
+
+  // Set original text for validation
+  const setOriginalSourceText = useCallback((text: string) => {
+    originalSourceTextRef.current = text;
+  }, []);
+
+  const setOriginalTargetText = useCallback((text: string) => {
+    originalTargetTextRef.current = text;
+  }, []);
+
+  // Validate that content only has newlines added/removed (not modified)
+  const isContentValid = useCallback((): boolean => {
+    const currentSource = getSourceContent() || '';
+    const currentTarget = getTargetContent() || '';
+    const originalSource = originalSourceTextRef.current;
+    const originalTarget = originalTargetTextRef.current;
+
+    // Helper function to check if only newlines were changed
+    const validateNewlinesOnly = (original: string, current: string): boolean => {
+      if (original === current) return true; // No changes
+      
+      // Split by newlines to compare line content
+      const originalLines = original.split('\n');
+      const currentLines = current.split('\n');
+      
+      // Remove all newlines and compare the content
+      const originalContent = original.replaceAll('\n', '');
+      const currentContent = current.replaceAll('\n', '');
+      
+      // If content (without newlines) changed, it's invalid
+      if (originalContent !== currentContent) {
+        return false;
+      }
+      
+      // Content is the same, so only newlines were added/removed - valid
+      return true;
+    };
+
+    const sourceValid = validateNewlinesOnly(originalSource, currentSource);
+    const targetValid = validateNewlinesOnly(originalTarget, currentTarget);
+
+    return sourceValid && targetValid;
+  }, [getSourceContent, getTargetContent]);
 
   // Split text into sentences based on newlines, preserving empty lines for alignment
   const splitIntoSentences = useCallback((text: string): string[] => {
@@ -391,7 +436,10 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
     externalAlignmentData,
     setExternalAlignmentData,
     loadAlignmentData,
-  }), [getSourceContent, getTargetContent, generateSentenceMappings, syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncEnabled, externalAlignmentData, loadAlignmentData]);
+    setOriginalSourceText,
+    setOriginalTargetText,
+    isContentValid,
+  }), [getSourceContent, getTargetContent, generateSentenceMappings, syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncEnabled, externalAlignmentData, loadAlignmentData, setOriginalSourceText, setOriginalTargetText, isContentValid]);
 
   return (
     <EditorContext.Provider value={value}>
