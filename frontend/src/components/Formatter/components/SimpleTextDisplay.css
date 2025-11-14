@@ -116,6 +116,17 @@
   word-break: break-word;
 }
 
+/* Make text selection transparent */
+.line-content::selection {
+  background-color: transparent;
+  color: inherit;
+}
+
+.line-content::-moz-selection {
+  background-color: transparent;
+  color: inherit;
+}
+
 .title-button {
   display: inline-flex;
   align-items: center;

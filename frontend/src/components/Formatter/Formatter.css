@@ -1,5 +1,22 @@
 /* Formatter Component Styles */
 
+/* Make text selection transparent within Formatter components */
+.simple-text-display *::selection,
+.segmented-text-display *::selection,
+.line-content::selection,
+.segment-content::selection {
+  background-color: transparent;
+  color: inherit;
+}
+
+.simple-text-display *::-moz-selection,
+.segmented-text-display *::-moz-selection,
+.line-content::-moz-selection,
+.segment-content::-moz-selection {
+  background-color: transparent;
+  color: inherit;
+}
+
 /* Integrated text selector styling */
 .integrated-text-selector {
   height: 100%;

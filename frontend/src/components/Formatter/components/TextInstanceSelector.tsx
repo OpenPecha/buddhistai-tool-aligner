@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTextInstances, useInstance, useAnnotation } from '../../../hooks/useTextData';
 import { applySegmentation } from '../../../lib/annotation';
 import type { OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
@@ -66,6 +67,7 @@ const getDisplayTitle = (title: unknown, language?: string): string => {
 export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   onTextLoad
 }) => {
+  const navigate = useNavigate();
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -258,8 +260,13 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   };
 
   const handleInstanceSelect = (instanceId: string) => {
-    setSelectedInstanceId(instanceId);
-    setProcessingError(null);
+    if (instanceId) {
+      // Navigate to formatter with instance ID
+      navigate(`/formatter/${instanceId}`);
+    } else {
+      setSelectedInstanceId(null);
+      setProcessingError(null);
+    }
   };
 
 

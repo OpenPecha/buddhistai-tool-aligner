@@ -231,7 +231,6 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
               onClick={(e) => handleSegmentClick(segment.id, e)}
             >
               <div className="segment-header">
-                <span className="segment-id">{segment.id}</span>
                 <span className="segment-range">({segment.start}-{segment.end})</span>
                 {segment.title && (
                   <span className="segment-title">{segment.title}</span>
