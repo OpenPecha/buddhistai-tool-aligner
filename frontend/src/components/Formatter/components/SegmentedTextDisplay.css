@@ -98,11 +98,6 @@
   word-wrap: break-word;
 }
 
-/* Make text selection transparent */
-.segment-content::selection {
-  background-color: transparent;
-  color: inherit;
-}
 
 .segment-content::-moz-selection {
   background-color: transparent;

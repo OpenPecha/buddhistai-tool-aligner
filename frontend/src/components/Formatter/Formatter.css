@@ -1,13 +1,13 @@
 /* Formatter Component Styles */
 
 /* Make text selection transparent within Formatter components */
-.simple-text-display *::selection,
+/* .simple-text-display *::selection,
 .segmented-text-display *::selection,
 .line-content::selection,
 .segment-content::selection {
   background-color: transparent;
   color: inherit;
-}
+} */
 
 .simple-text-display *::-moz-selection,
 .segmented-text-display *::-moz-selection,

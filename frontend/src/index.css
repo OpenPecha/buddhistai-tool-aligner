@@ -63,6 +63,10 @@ html, body, #root {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 /* CodeMirror editor constraints */
@@ -76,6 +80,10 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   position: relative;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
 }
 
 .editor-container .cm-scroller {
@@ -85,6 +93,10 @@ html, body, #root {
   min-height: 0 !important;
   flex: 1 1 0%;
   position: relative;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
 }
 
 .editor-container .cm-content {
@@ -92,6 +104,10 @@ html, body, #root {
   max-width: 100% !important;
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
 }
 
 /* Ensure line wrapping works properly */
@@ -99,6 +115,10 @@ html, body, #root {
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
   white-space: pre-wrap !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
 }
 
 .editor-container:hover .selection-indicator {
@@ -376,6 +396,11 @@ body {
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
+		/* Enable text selection/dragging globally */
+		user-select: text;
+		-webkit-user-select: text;
+		-moz-user-select: text;
+		-ms-user-select: text;
 	}
 	body {
 		@apply bg-background text-foreground;

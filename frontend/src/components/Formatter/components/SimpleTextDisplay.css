@@ -47,7 +47,6 @@
   color: #9ca3af;
   font-size: 0.875rem;
   cursor: pointer;
-  user-select: none;
   flex-shrink: 0;
   background: none;
   border: none;
@@ -70,7 +69,6 @@
   font-weight: 600;
   border-radius: 0.25rem;
   flex-shrink: 0;
-  user-select: none;
 }
 
 /* Paragraph tag styling */
@@ -116,11 +114,7 @@
   word-break: break-word;
 }
 
-/* Make text selection transparent */
-.line-content::selection {
-  background-color: transparent;
-  color: inherit;
-}
+
 
 .line-content::-moz-selection {
   background-color: transparent;
