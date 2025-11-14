@@ -8,10 +8,11 @@ import { useTranslation } from 'react-i18next';
 type submitFormatProps = {
    readonly segmentAnnotations: SegmentAnnotation[],
    readonly hasExistingSegmentation?: boolean,
+   readonly hasExistingTOC?: boolean,
    readonly instanceId: string | null,
 }
 
-function SubmitFormat({segmentAnnotations, hasExistingSegmentation = false, instanceId}: submitFormatProps) {
+function SubmitFormat({segmentAnnotations, hasExistingSegmentation = false, hasExistingTOC = false, instanceId}: submitFormatProps) {
   const { t } = useTranslation();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -22,7 +23,6 @@ function SubmitFormat({segmentAnnotations, hasExistingSegmentation = false, inst
     annotationData: {
       type: string;
       annotation: Array<{
-        id: string;
         title: string;
         segments: string[];
       }>;
@@ -145,12 +145,12 @@ function SubmitFormat({segmentAnnotations, hasExistingSegmentation = false, inst
     <div className="space-y-2">
       <button
         onClick={handleSubmitFormat}
-        disabled={createTOCMutation.isPending || !instanceId}
+        disabled={createTOCMutation.isPending || !instanceId || hasExistingTOC}
         className="px-4 py-2 w-full bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {(() => {
           if (createTOCMutation.isPending) return t('formatter.submitting');
-          return hasExistingSegmentation ? t('common.create') : t('common.save');
+          return hasExistingSegmentation ? t('common.save') : t('common.save');
         })()}
       </button>
       

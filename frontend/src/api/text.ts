@@ -114,7 +114,6 @@ export const createTableOfContentsAnnotation = async (
   annotationData: {
     type: string;
     annotation: Array<{
-      id: string;
       title: string;
       segments: string[];
     }>;

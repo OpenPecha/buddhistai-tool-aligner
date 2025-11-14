@@ -18,11 +18,11 @@ import type { TreeNode, TextRange, TitleCreationData, SegmentAnnotation } from '
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useInstance, useAnnotation } from '../../../hooks/useTextData';
-import { applySegmentation } from '../../../lib/annotation';
 import type { SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
 import SubmitFormat from './SubmitFormat.tsx';
 import '../Formatter.css';
 import { useTranslation } from 'react-i18next';
+import { fetchAnnotation, fetchInstance } from '../../../api/text.ts';
 
 function FormatterWorkstation() {
   const { t } = useTranslation();
@@ -44,6 +44,7 @@ function FormatterWorkstation() {
   const [segmentedText, setSegmentedText] = useState<Array<{segment: SegmentAnnotation, text: string}>>([]);
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
   const [hasExistingSegmentation, setHasExistingSegmentation] = useState<boolean>(false);
+  const [hasExistingTOC, setHasExistingTOC] = useState<boolean>(false);
   
   // Fetch instance data if URL parameter is provided
   const { data: urlInstanceData, isLoading: isLoadingUrlInstance, isSuccess: isUrlInstanceSuccess } = useInstance(urlInstanceId || null);
@@ -57,7 +58,7 @@ function FormatterWorkstation() {
   const hasCheckedForSegmentation = isUrlInstanceSuccess && urlInstanceData;
   
   // Fetch segmentation annotation for URL instance
-  const { data: urlSegmentationData, isLoading: isLoadingUrlSegmentation, isSuccess: isUrlSegmentationSuccess } = useAnnotation(urlSegmentationAnnotationId || null);
+  const { isLoading: isLoadingUrlSegmentation, isSuccess: isUrlSegmentationSuccess } = useAnnotation(urlSegmentationAnnotationId || null);
   
   // Determine if we're ready to load (either segmentation loaded or no segmentation exists)
   const isReadyToLoad = hasCheckedForSegmentation && (
@@ -115,51 +116,112 @@ function FormatterWorkstation() {
     // - No URL instance ID
     // - Already loaded an instance
     // - Not ready to load (still fetching data)
-    if (!urlInstanceId || instanceId || !isReadyToLoad) return;
     const loadUrlInstance = async () => {
       try {
-        const baseText = urlInstanceData.content || '';
-        let segmentAnnotations: SegmentAnnotation[] = [];
+        if (!urlInstanceId || !urlInstanceData) {
+          return;
+        }
         
+        const baseText = urlInstanceData.content || '';
+        const segmentAnnotations: SegmentAnnotation[] = [];
+        const instance = await fetchInstance(urlInstanceId);
 
-        //get segmentation annotation from api
-        if (urlSegmentationData) {
-
-
-            
-        //get Toc annotation from api if exists
-        //apply the TOC on text if exists
-        //otherwise apply segmentation if exists
-
-
-
-        // Apply segmentation if annotation data exists
+        // Handle annotations as array (API format)
+        const annotationsArray = Array.isArray(instance.annotations) 
+          ? instance.annotations 
+          : [];
+        
+        const TOC_annotation = annotationsArray.find((annotation: { type?: string; annotation_id?: string }) => annotation.type === 'table_of_contents');
+        const segmentation_annotation = annotationsArray.find((annotation: { type?: string; annotation_id?: string }) => annotation.type === 'segmentation');
+        
+        // Process TOC and segmentation annotations
+        const segmentIdToTitleMap = new Map<string, string>();
+        
+        // Fetch TOC annotation if it exists
+        if (TOC_annotation) {
+          setHasExistingTOC(true);
           try {
-            // Handle different annotation data structures
-            let annotationArray: APISegmentationAnnotation[] = [];
-            
-            if (Array.isArray(urlSegmentationData)) {
-              annotationArray = urlSegmentationData;
-            } else if (urlSegmentationData.data && Array.isArray(urlSegmentationData.data)) {
-              // New API format: { id, type, data: [...] }
-              annotationArray = urlSegmentationData.data as APISegmentationAnnotation[];
-            } else if (urlSegmentationData.annotation && Array.isArray(urlSegmentationData.annotation)) {
-              // Legacy format: { annotation: [...] }
-              annotationArray = urlSegmentationData.annotation as APISegmentationAnnotation[];
-            } else {
-              console.warn('Unexpected segmentation data structure:', urlSegmentationData);
-            }
-            
-            if (annotationArray.length > 0) {
-              // Apply segmentation to content (not used but kept for compatibility)
-              applySegmentation(baseText, annotationArray);
+            const TOCAnnotationId = TOC_annotation.annotation_id;
+            if (TOCAnnotationId) {
+              const tocAnnotations = await fetchAnnotation(TOCAnnotationId);
               
-              // Convert to formatter-compatible segments
-              segmentAnnotations = annotationArray.map((seg: APISegmentationAnnotation, index: number) => ({
-                id: seg.id || `seg_${index + 1}`,
-                start: seg.span?.start || 0,
-                end: seg.span?.end || 0,
-              }));
+              // Parse TOC data structure
+              let tocData: Array<{ id: string; title: string; segments: string[] }> = [];
+              
+              if (tocAnnotations && typeof tocAnnotations === 'object') {
+                const tocDataProperty = (tocAnnotations as Record<string, unknown>).data;
+                if (tocDataProperty && Array.isArray(tocDataProperty)) {
+                  tocData = tocDataProperty as Array<{ id: string; title: string; segments: string[] }>;
+                }
+              }
+              
+              // Create a map of segment ID -> title from TOC
+              for (const tocEntry of tocData) {
+                for (const segmentId of tocEntry.segments) {
+                  segmentIdToTitleMap.set(segmentId, tocEntry.title);
+                }
+              }
+              
+              console.log(`TOC found with ${tocData.length} entries, mapping ${segmentIdToTitleMap.size} segments`);
+            }
+          } catch (tocError) {
+            console.warn('Error processing TOC annotation:', tocError);
+          }
+        } else {
+          setHasExistingTOC(false);
+        }
+        
+        // Fetch and process segmentation annotation
+        if (segmentation_annotation) {
+          console.log('segmentation annotation found');
+          try {
+            const segmentationAnnotationId = segmentation_annotation.annotation_id;
+            if (segmentationAnnotationId) {
+              const urlSegmentationData = await fetchAnnotation(segmentationAnnotationId);
+              
+              // Handle different annotation data structures
+              let annotationArray: APISegmentationAnnotation[] = [];
+              
+              if (Array.isArray(urlSegmentationData)) {
+                annotationArray = urlSegmentationData as APISegmentationAnnotation[];
+              } else if (urlSegmentationData && typeof urlSegmentationData === 'object') {
+                // Check for data property (new API format: { id, type, data: [...] })
+                const dataProperty = (urlSegmentationData as Record<string, unknown>).data;
+                if (dataProperty && Array.isArray(dataProperty)) {
+                  annotationArray = dataProperty as APISegmentationAnnotation[];
+                } 
+                // Check for annotation property (legacy format: { annotation: [...] })
+                else {
+                  const annotationProperty = (urlSegmentationData as Record<string, unknown>).annotation;
+                  if (annotationProperty && Array.isArray(annotationProperty)) {
+                    annotationArray = annotationProperty as APISegmentationAnnotation[];
+                  } else {
+                    console.warn('Unexpected segmentation data structure:', urlSegmentationData);
+                  }
+                }
+              }
+              
+              if (annotationArray.length > 0) {
+                // Convert to formatter-compatible segments and apply titles from TOC
+                const convertedSegments: SegmentAnnotation[] = annotationArray.map((seg: APISegmentationAnnotation, index: number) => {
+                  const segmentId = seg.id || `seg_${index + 1}`;
+                  const title = segmentIdToTitleMap.get(segmentId);
+                  
+                  return {
+                    id: segmentId,
+                    start: seg.span?.start || 0,
+                    end: seg.span?.end || 0,
+                    ...(title && { title }), // Apply title if found in TOC map
+                  };
+                });
+                
+                // Update segmentAnnotations with the converted segments
+                segmentAnnotations.push(...convertedSegments);
+                
+                const segmentsWithTitles = convertedSegments.filter(s => s.title).length;
+                const titleInfo = segmentsWithTitles > 0 ? `, ${segmentsWithTitles} with titles` : '';
+                console.log(`Applied ${convertedSegments.length} segmentation segments${titleInfo}`);
+              }
             }
           } catch (segError) {
             console.warn('Error applying segmentation:', segError);
@@ -179,14 +241,16 @@ function FormatterWorkstation() {
         setSegmentedText(segmentedText);
         setSelectedSegments([]);
         setHasExistingSegmentation(segmentAnnotations.length > 0);
+        // Note: hasExistingTOC is set above when processing TOC annotation
         
       } catch (error) {
         console.error('Error auto-loading instance from URL:', error);
       }
     };
-    
-    loadUrlInstance();
-  }, []);
+    if(urlInstanceId && urlInstanceData){
+      loadUrlInstance();
+    }
+  }, [urlInstanceId, urlInstanceData]);
 
   // Handle changing text (go back to selection)
   const handleChangeText = useCallback(() => {
@@ -196,6 +260,7 @@ function FormatterWorkstation() {
     setSegmentedText([]);
     setSelectedSegments([]);
     setHasExistingSegmentation(false);
+    setHasExistingTOC(false);
     setTreeData([]); // Clear legacy tree data
     
     // Navigate back to formatter page
@@ -522,6 +587,7 @@ function FormatterWorkstation() {
               <SubmitFormat 
                 segmentAnnotations={segmentAnnotations}
                 hasExistingSegmentation={hasExistingSegmentation}
+                hasExistingTOC={hasExistingTOC}
                 instanceId={instanceId}
               />
             </div>

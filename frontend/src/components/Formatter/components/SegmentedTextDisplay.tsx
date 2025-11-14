@@ -154,14 +154,14 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
 
 
   return (
-    <div className="segmented-text-display ">
-      <div className="segments-container mb-20">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto ">
         {segmentedText.map(({ segment, text }) => (
           <div key={segment.id} className="segment-wrapper">
             {/* Title input field - appears above the segment when active */}
             {showingTitleInput === segment.id && (
-                <div className="title-input-container">
-                  <div className="title-input-wrapper">
+                <div className="">
+                  <div className="p-2 flex items-center gap-2">
                     <input
                       ref={inputRef}
                       type="text"
@@ -253,7 +253,9 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
           </div>
         ))}
       </div>
-
+      <div className="text-sm text-gray-500 bg-gray-100 p-2 rounded-md">
+        Hold Shift and click to select multiple segments
+      </div>
     </div>
   );
 };
