@@ -622,7 +622,7 @@ function UnifiedSelectionPanel() {
   // Handle creating text from BDRC ID
   const handleCreateTextFromBdrc = React.useCallback(() => {
     if (!selectedBdrcResult?.workId) return;
-    const url = `${CATALOGER_URL}/create?t_id=${selectedBdrcResult.workId}`;
+    const url = `${CATALOGER_URL}/create?w_id=${selectedBdrcResult.workId}&i_id=${selectedBdrcResult.instanceId}`;
     window.open(url, "_blank");
   }, [selectedBdrcResult]);
 
