@@ -7,6 +7,7 @@ import FormatterPage from './pages/FormatterPage';
 import AlignerPage from './pages/AlignerPage';
 import AlignmentWorkstation from './components/Aligner/components/AlignmentWorkstation';
 import FormatterWorkstation from './components/Formatter/components/FormatterWorkstation';
+import { useAuth0 } from '@auth0/auth0-react';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -19,6 +20,14 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const { user, isAuthenticated, isLoading,loginWithRedirect } = useAuth0();
+  console.log(user)
+  if(!user){
+    return <div>
+      <button  onClick={() => loginWithRedirect()} >Login</button>
+
+    </div>
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <div className="h-full">
