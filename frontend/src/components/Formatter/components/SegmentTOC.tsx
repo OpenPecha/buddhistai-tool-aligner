@@ -4,11 +4,13 @@ import './SegmentTOC.css';
 
 interface SegmentTOCProps {
   segmentAnnotations: SegmentAnnotation[];
+  baseText: string;
   onClose?: () => void;
 }
 
 export const SegmentTOC: React.FC<SegmentTOCProps> = ({
   segmentAnnotations,
+  baseText,
   onClose,
 }) => {
   const [expandedTitles, setExpandedTitles] = useState<Set<string>>(new Set());
@@ -153,25 +155,25 @@ export const SegmentTOC: React.FC<SegmentTOCProps> = ({
                       ▶
                     </span>
                     <span className="entry-title">{entry.title}</span>
-                    <span className="entry-meta">
-                      {segmentCount} segment{segmentCount !== 1 ? 's' : ''} 
-                      ({totalChars} chars)
-                    </span>
                   </button>
                   
                   {isExpanded && (
                     <div className="toc-entry-content">
-                      {entry.segmentation.map((segment) => (
-                        <div key={segment.id} className="segment-item">
-                          <span className="segment-id">{segment.id}</span>
-                          <span className="segment-range">
-                            {segment.start}-{segment.end}
-                          </span>
-                          <span className="segment-length">
-                            ({segment.end - segment.start} chars)
-                          </span>
-                        </div>
-                      ))}
+                      {entry.segmentation.map((segment) => {
+                        const segmentText = baseText.slice(segment.start, segment.end);
+                        const previewText = segmentText.length > 100 
+                          ? segmentText.substring(0, 100) + '...' 
+                          : segmentText;
+                        
+                        return (
+                          <div key={segment.id} className="segment-item flex-col items-start font-['Noto',sans-serif]">
+                           
+                            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words w-full">
+                              {previewText || '\u00A0'}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

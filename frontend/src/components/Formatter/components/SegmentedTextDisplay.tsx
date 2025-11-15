@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { SegmentAnnotation } from '../types';
-import './SegmentedTextDisplay.css';
 
 interface SegmentedTextDisplayProps {
   segmentedText: Array<{segment: SegmentAnnotation, text: string}>;
@@ -139,14 +138,18 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
   }, [showSuggestions, filteredSuggestions, selectedSuggestionIndex, handleTitleSubmit, handleTitleCancel]);
 
   const getSegmentClass = (segment: SegmentAnnotation): string => {
-    const classes = ['segment-block'];
+    const isSelected = selectedSegments.includes(segment.id);
+    const hasTitle = !!segment.title;
     
-    if (selectedSegments.includes(segment.id)) {
-      classes.push('selected');
-    }
+    const classes = [
+      'bg-white border-2  p-4 cursor-pointer transition-all duration-200 relative',
+      isSelected 
+        ? 'border-blue-500 bg-blue-50 shadow-[0_0_0_3px_rgba(59,130,246,0.1)]' 
+        : 'border-slate-200 hover:border-slate-300 hover:shadow-md',
+    ];
     
-    if (segment.title) {
-      classes.push('has-title');
+    if (hasTitle) {
+      classes.push(isSelected ? 'border-l-4 border-l-emerald-600' : 'border-l-4 border-l-emerald-500');
     }
     
     return classes.join(' ');
@@ -154,10 +157,10 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
 
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto ">
+    <div className="flex flex-col h-full font-['Noto',sans-serif]">
+      <div className="flex-1 overflow-y-auto  pointer-events-auto">
         {segmentedText.map(({ segment, text }) => (
-          <div key={segment.id} className="segment-wrapper">
+          <div key={segment.id} className="relative">
             {/* Title input field - appears above the segment when active */}
             {showingTitleInput === segment.id && (
                 <div className="">
@@ -165,7 +168,7 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
                     <input
                       ref={inputRef}
                       type="text"
-                      className="title-input"
+                      className="flex-1 p-2 border border-amber-600 rounded text-sm bg-white focus:outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-100"
                       value={titleInputValue}
                       onChange={(e) => handleTitleInputChange(e.target.value)}
                       onKeyDown={(e) => handleTitleKeyDown(e, segment.id)}
@@ -176,16 +179,16 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
                       }
                       autoFocus
                     />
-                    <div className="title-input-buttons">
+                    <div className="flex gap-1">
                       <button
-                        className="title-submit-btn"
+                        className="w-8 h-8 border-none rounded cursor-pointer font-semibold transition-all duration-200 flex items-center justify-center bg-emerald-500 text-white hover:bg-emerald-600"
                         onClick={() => handleTitleSubmit(segment.id)}
                         title="Save title"
                       >
                         ✓
                       </button>
                       <button
-                        className="title-cancel-btn"
+                        className="w-8 h-8 border-none rounded cursor-pointer font-semibold transition-all duration-200 flex items-center justify-center bg-red-500 text-white hover:bg-red-600"
                         onClick={handleTitleCancel}
                         title="Cancel"
                       >
@@ -196,9 +199,9 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
 
                   {/* Suggestions dropdown */}
                   {showSuggestions && filteredSuggestions.length > 0 && (
-                    <div ref={suggestionsRef} className="title-suggestions">
+                    <div ref={suggestionsRef} className="absolute top-full left-3 right-3 mt-2 bg-white border-2 border-amber-500 rounded-md shadow-lg max-h-[200px] overflow-y-auto z-[1000]">
                       {existingTitles.length > 0 && !titleInputValue && (
-                        <div className="suggestions-header">
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                           Existing titles:
                         </div>
                       )}
@@ -207,7 +210,11 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
                           key={suggestion}
                           role="button"
                           tabIndex={0}
-                          className={`suggestion-item ${index === selectedSuggestionIndex ? 'selected' : ''}`}
+                          className={`px-3 py-2 cursor-pointer text-sm text-gray-700 transition-colors duration-150 border-b border-gray-100 last:border-b-0 ${
+                            index === selectedSuggestionIndex 
+                              ? 'bg-amber-100 text-amber-900 font-semibold' 
+                              : 'hover:bg-amber-100 hover:text-amber-900'
+                          }`}
                           onClick={() => handleSuggestionClick(suggestion, segment.id)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
@@ -227,28 +234,29 @@ export const SegmentedTextDisplay: React.FC<SegmentedTextDisplayProps> = ({
 
             {/* Segment block */}
             <div 
-              className={getSegmentClass(segment)}
+              className={getSegmentClass(segment) + ' pointer-events-auto'}
               onClick={(e) => handleSegmentClick(segment.id, e)}
             >
-              <div className="segment-header">
-                <span className="segment-range">({segment.start}-{segment.end})</span>
+              <div className="flex absolute top-0 right-0 items-center gap-2 mb-3 text-sm text-gray-500">
+                {/* <span className="text-gray-400 font-['Noto,sans-serif']">({segment.start}-{segment.end})</span> */}
                 {segment.title && (
-                  <span className="segment-title">{segment.title}</span>
+                  <span className="font-semibold capitalize bg-blue-100 text-blue-900 rounded-md truncate max-w-[200px] px-2 py-1  ml-auto font-['Noto',sans-serif]">{segment.title}</span>
                 )}
-                <button
-                  className="add-title-btn"
-                  onClick={(e) => handleShowTitleInput(segment.id, e)}
-                  title="Add title to segment"
-                >
-                  🏷️
-                </button>
+               
               </div>
-              <div className="segment-content">
+              <div className="leading-relaxed text-gray-700 whitespace-pre-wrap break-words">
+              {selectedSegments.includes(segment.id) && (
+                  <button
+                    className="bg-transparent border-none cursor-pointer p-1 rounded transition-colors duration-200 text-base hover:bg-gray-100"
+                    onClick={(e) => handleShowTitleInput(segment.id, e)}
+                    title="Add title to segment"
+                  >
+                    🏷️
+                  </button>
+                )}
                 {text || '\u00A0'}
               </div>
-              {selectedSegments.includes(segment.id) && (
-                <div className="selection-indicator">Selected</div>
-              )}
+             
             </div>
           </div>
         ))}

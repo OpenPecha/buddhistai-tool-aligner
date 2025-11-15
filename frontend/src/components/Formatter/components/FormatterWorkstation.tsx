@@ -45,6 +45,7 @@ function FormatterWorkstation() {
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
   const [hasExistingSegmentation, setHasExistingSegmentation] = useState<boolean>(false);
   const [hasExistingTOC, setHasExistingTOC] = useState<boolean>(false);
+  const [isLoadingAnnotations, setIsLoadingAnnotations] = useState<boolean>(false);
   
   // Fetch instance data if URL parameter is provided
   const { data: urlInstanceData, isLoading: isLoadingUrlInstance, isSuccess: isUrlInstanceSuccess } = useInstance(urlInstanceId || null);
@@ -119,8 +120,11 @@ function FormatterWorkstation() {
     const loadUrlInstance = async () => {
       try {
         if (!urlInstanceId || !urlInstanceData) {
+          setIsLoadingAnnotations(false);
           return;
         }
+        
+        setIsLoadingAnnotations(true);
         
         const baseText = urlInstanceData.content || '';
         const segmentAnnotations: SegmentAnnotation[] = [];
@@ -243,8 +247,10 @@ function FormatterWorkstation() {
         setHasExistingSegmentation(segmentAnnotations.length > 0);
         // Note: hasExistingTOC is set above when processing TOC annotation
         
+        setIsLoadingAnnotations(false);
       } catch (error) {
         console.error('Error auto-loading instance from URL:', error);
+        setIsLoadingAnnotations(false);
       }
     };
     if(urlInstanceId && urlInstanceData){
@@ -408,6 +414,7 @@ function FormatterWorkstation() {
             {useSegmentView ? (
               <SegmentTOC
                 segmentAnnotations={segmentAnnotations}
+                baseText={baseText}
                 onClose={() => setShowTOC(false)}
               />
             ) : (
@@ -442,22 +449,12 @@ function FormatterWorkstation() {
         )}
 
         {/* Editor Section */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col mb-15">
           {/* View Toggle - only show when we have content */}
           {instanceId && (
             <div className="p-4 border-b border-gray-200 bg-white">
               <div className="flex items-center gap-6 flex-wrap">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={useSegmentView}
-                    onChange={(e) => setUseSegmentView(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Use Segment View
-                  </span>
-                </label>
+               
 
                 <span className="text-xs text-gray-500">
                   {useSegmentView ?
@@ -490,7 +487,16 @@ function FormatterWorkstation() {
           <div className="flex-1 overflow-hidden">
             {(() => {
               // Show loading state when auto-loading from URL
-              if (urlInstanceId && !instanceId && !isReadyToLoad) {
+              // Show loading if: we have a URL instance ID but haven't set local instanceId yet,
+              // AND we're either still loading or not ready to load
+              const isStillLoading = urlInstanceId && !instanceId && (
+                isLoadingUrlInstance || 
+                isLoadingUrlSegmentation || 
+                isLoadingAnnotations ||
+                !isReadyToLoad
+              );
+              
+              if (isStillLoading) {
                 return (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -498,28 +504,14 @@ function FormatterWorkstation() {
                       <p className="text-gray-600">Loading instance from URL...</p>
                       <p className="text-sm text-gray-500 mt-2">Instance ID: {urlInstanceId}</p>
                       {isLoadingUrlInstance && <p className="text-xs text-gray-400 mt-1">Fetching instance data...</p>}
-                      {!isLoadingUrlInstance && isLoadingUrlSegmentation && <p className="text-xs text-gray-400 mt-1">Loading segmentation annotations...</p>}
+                      {!isLoadingUrlInstance && (isLoadingUrlSegmentation || isLoadingAnnotations) && <p className="text-xs text-gray-400 mt-1">Loading annotations...</p>}
+                      {!isLoadingUrlInstance && !isLoadingUrlSegmentation && !isLoadingAnnotations && !isReadyToLoad && <p className="text-xs text-gray-400 mt-1">Preparing data...</p>}
                     </div>
                   </div>
                 );
               }
               
-              // Show message when no instance ID in URL
-              if (!instanceId) {
-                return (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <p className="text-gray-600">No instance selected</p>
-                      <button
-                        onClick={() => navigate('/formatter')}
-                        className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                      >
-                        Select an Instance
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
+          
               
               // Show content when instance is loaded
               return (
