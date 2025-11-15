@@ -7,7 +7,10 @@ import FormatterPage from './pages/FormatterPage';
 import AlignerPage from './pages/AlignerPage';
 import AlignmentWorkstation from './components/Aligner/components/AlignmentWorkstation';
 import FormatterWorkstation from './components/Formatter/components/FormatterWorkstation';
-import { useAuth0 } from '@auth0/auth0-react';
+import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -20,27 +23,32 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { user, isAuthenticated, isLoading,loginWithRedirect } = useAuth0();
-  console.log(user)
-  if(!user){
-    return <div>
-      <button  onClick={() => loginWithRedirect()} >Login</button>
-
-    </div>
-  }
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="h-full">
-        <Router>
+      <Router>
+        <div className="h-full flex flex-col">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/formatter" element={<FormatterPage />} />
-            <Route path="/formatter/:instanceId" element={<FormatterWorkstation />} />
-            <Route path="/aligner" element={<AlignerPage />} />
-            <Route path="/aligner/:sourceInstanceId/:targetInstanceId" element={<AlignmentWorkstation/>} />
+            {/* Public route */}
+            <Route path="/login" element={<LoginPage />} />
+            
+            {/* Protected routes with layout */}
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Home />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="formatter" element={<FormatterPage />} />
+              <Route path="formatter/:instanceId" element={<FormatterWorkstation />} />
+              <Route path="aligner" element={<AlignerPage />} />
+              <Route path="aligner/:sourceInstanceId/:targetInstanceId" element={<AlignmentWorkstation/>} />
+            </Route>
           </Routes>
-        </Router>
-      </div>
+        </div>
+      </Router>
     </QueryClientProvider>
   );
 }
