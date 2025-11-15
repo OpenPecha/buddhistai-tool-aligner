@@ -18,8 +18,8 @@
     "empty": "Empty"
   },
   "home": {
-    "title": "Buddhist AI Tool Aligner",
-    "subtitle": "Choose your preferred interface for text alignment and formatting",
+    "title": "Buddhist AI Tool",
+    "subtitle": "Choose your preferred tool",
     "formatter": {
       "title": "Formatter",
       "description": "Advanced text formatting and structure management with hierarchical organization, export capabilities, and comprehensive editing tools.",
@@ -29,6 +29,11 @@
       "title": "Aligner",
       "description": "Powerful text alignment tool for comparing and synchronizing content between different versions or translations with mapping capabilities.",
       "button": "Open Aligner"
+    },
+    "cataloger": {
+      "title": "Cataloger",
+      "description": "Create and manage text entries in the catalog system. ",
+      "button": "Open Cataloger"
     },
     "footer": "Select the tool that best fits your current workflow needs"
   },
