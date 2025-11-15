@@ -68,6 +68,11 @@ const MappingSidebar = () => {
 
   // Handle saving alignment annotation
   const handleSave = () => {
+    // Show confirmation dialog before saving
+    const confirmed = globalThis.confirm(t('mapping.confirmSaveAlignment'));
+    if (!confirmed) {
+      return;
+    }
     if (!sourceInstanceId || !targetInstanceId) {
       setSaveError(t('mapping.sourceAndTargetRequired'));
       return;
@@ -75,7 +80,7 @@ const MappingSidebar = () => {
 
     // Validate content before saving
     if (!isContentValid()) {
-      setSaveError('Content has been modified. Only adding or removing newlines is allowed.');
+      setSaveError(t('mapping.contentModifiedError'));
       return;
     }
 
@@ -84,7 +89,7 @@ const MappingSidebar = () => {
     const targetContent = getTargetContent();
     
     if (!sourceContent || !targetContent) {
-      setSaveError('Source and target content are required');
+      setSaveError(t('mapping.sourceAndTargetContentRequired'));
       return;
     }
     const sourceSegments = sourceContent.split('\n');
@@ -133,7 +138,7 @@ const MappingSidebar = () => {
         {isContentInvalid && (
           <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-sm text-yellow-800">
-              Content has been modified. Only adding or removing newlines is allowed. Please revert changes to save.
+              {t('mapping.contentModifiedWarning')}
             </p>
           </div>
         )}
@@ -142,7 +147,7 @@ const MappingSidebar = () => {
             disabled={hasAlignment || isContentInvalid}
             className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-          {createAnnotationMutation.isPending ? 'Saving...' : 'Save'}
+          {createAnnotationMutation.isPending ? t('mapping.publishing') : t('mapping.publish')}
         </button>
       </div>
   );

@@ -133,7 +133,13 @@
     "savingAlignmentFailed": "Saving alignment failed:",
     "failedToSaveAlignment": "Failed to save alignment",
     "sourceAndTargetRequired": "Source and target instance IDs are required",
-    "noAlignmentMappings": "No alignment mappings found"
+    "noAlignmentMappings": "No alignment mappings found",
+    "confirmSaveAlignment": "Warning: Are you sure you want to save this alignment? This action cannot be undone.",
+    "contentModifiedError": "Content has been modified. Only adding or removing newlines is allowed.",
+    "contentModifiedWarning": "Content has been modified. Only adding or removing newlines is allowed. Please revert changes to save.",
+    "sourceAndTargetContentRequired": "Source and target content are required",
+    "publishing": "Publishing...",
+    "publish": "Publish"
   }
 }
 
