@@ -5,7 +5,7 @@ function Layout() {
   return (
     <div className="h-full flex flex-col">
       <Navigation />
-      <div className="flex-1">
+      <div className="flex-1 font-['noto']">
         <Outlet />
       </div>
     </div>
