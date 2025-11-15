@@ -11,12 +11,13 @@ function CatalogerButton() {
   return (
     <button 
       onClick={handleOpenCataloger} 
-      className='flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ease-in-out active:scale-95'
-    >
-      <PlusCircle className="w-4 h-4" /> 
-      {t('aligner.createText')}
+      className="inline-block w-full px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+      >
+      Cataloger
     </button>
   )
 }
+
+
 
 export default CatalogerButton
