@@ -1,5 +1,5 @@
-import React from "react";
-import { useInstance, useTextInstances } from "../../../hooks/useTextData";
+import React, { useCallback } from "react";
+import { useInstance, useTextInstances, useTextTitleSearch } from "../../../hooks/useTextData";
 import { useTextSelectionStore } from "../../../stores/textSelectionStore";
 import { useSearchParams } from "react-router-dom";
 import { CATALOGER_URL } from "../../../config";
@@ -11,6 +11,7 @@ import { RelatedInstancesPanel } from "./RelatedInstancesPanel";
 import { useAlignmentSegmentation } from "../hooks/useAlignmentSegmentation";
 import { useBdrcTextSelection } from "../hooks/useBdrcTextSelection";
 import { useRelatedInstances } from "../hooks/useRelatedInstances";
+import type { TextTitleSearchResult } from "../../../api/text";
 import {
   fetchAnnotation,
   fetchInstance,
@@ -50,6 +51,7 @@ function UnifiedSelectionPanel() {
   const [selectedInstanceId, setSelectedInstanceId] = React.useState<
     string | null
   >(sourceInstanceId || null);
+  const [selectedLocalTextTitle, setSelectedLocalTextTitle] = React.useState<string | null>(null);
 
   const urlSourceId = searchParams.get("s_id");
   const urlTargetId = searchParams.get("t_id");
@@ -76,6 +78,9 @@ function UnifiedSelectionPanel() {
     handleResetBdrcSelection: handleResetBdrcSelectionBase,
     hasSelectedText,
   } = useBdrcTextSelection();
+
+  // Local text search hook - use bdrcSearchQuery for searching
+  const { results: localTextResults, isLoading: isLoadingLocalTexts, error: localTextError } = useTextTitleSearch(bdrcSearchQuery, 500);
 
   // React Query hooks for source
   const {
@@ -118,17 +123,31 @@ function UnifiedSelectionPanel() {
       if (textId) {
         setSelectedTextId(textId);
         setSelectedInstanceId(null);
+        setSelectedLocalTextTitle(null); // Clear local text title when BDRC is selected
       }
     },
     [handleBdrcResultSelectBase]
   );
 
-  // Handle resetting BDRC selection
-  const handleResetBdrcSelection = React.useCallback(() => {
+  // Handle resetting selection (both BDRC and local text)
+  const handleResetSelection = React.useCallback(() => {
     handleResetBdrcSelectionBase();
     setSelectedTextId("");
     setSelectedInstanceId(null);
+    setSelectedLocalTextTitle(null);
   }, [handleResetBdrcSelectionBase]);
+
+  // Handle local text selection - use text ID directly without fetching
+  const handleLocalTextSelect = useCallback((text: TextTitleSearchResult) => {
+    console.log("handleLocalTextSelect", text);
+    setSelectedTextId(text.text_id);
+    setSelectedLocalTextTitle(text.title);
+    setSelectedInstanceId(null);
+    // Reset BDRC selection when manually selecting local text
+    if (selectedBdrcResult) {
+      handleResetBdrcSelectionBase();
+    }
+  }, [selectedBdrcResult, handleResetBdrcSelectionBase]);
 
   // Handle instance selection
   const handleInstanceSelection = React.useCallback(
@@ -648,12 +667,11 @@ function UnifiedSelectionPanel() {
     return text?.id || null;
   }, [selectedBdrcResult, fetchedTexts]);
 
-  const shouldShowBdrcSearch = !hasSelectedText || !selectedTextId;
-  const shouldShowSelectedText = hasSelectedText && selectedTextId;
+  const shouldShowBdrcSearch = !hasSelectedText && !selectedTextId;
+  const shouldShowSelectedText = (hasSelectedText || selectedTextId) && selectedTextId;
   const shouldShowInstanceSelector =
-    hasSelectedText && selectedTextId && !isCheckingBdrcText;
+    selectedTextId && !isCheckingBdrcText;
   const shouldShowRelatedInstances =
-    hasSelectedText &&
     selectedTextId &&
     !isCheckingBdrcText &&
     sourceInstanceId;
@@ -677,7 +695,7 @@ function UnifiedSelectionPanel() {
           </div>
           
           <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto min-h-0">
-            {/* BDRC Search Panel */}
+            {/* BDRC Search Panel with Local Text Search */}
             {shouldShowBdrcSearch && (
               <BdrcSearchPanel
                 bdrcSearchQuery={bdrcSearchQuery}
@@ -689,6 +707,10 @@ function UnifiedSelectionPanel() {
                 selectedBdrcResult={selectedBdrcResult}
                 onResultSelect={handleBdrcResultSelect}
                 onCreateText={handleCreateTextFromBdrc}
+                localTextResults={localTextResults}
+                isLoadingLocalTexts={isLoadingLocalTexts}
+                localTextError={localTextError}
+                onLocalTextSelect={handleLocalTextSelect}
               />
             )}
 
@@ -696,8 +718,9 @@ function UnifiedSelectionPanel() {
             {shouldShowSelectedText && (
               <SelectedTextDisplay
                 selectedBdrcResult={selectedBdrcResult}
-                textId={selectedTextIdFromBdrc}
-                onReset={handleResetBdrcSelection}
+                textId={selectedTextId}
+                textTitle={selectedLocalTextTitle}
+                onReset={handleResetSelection}
               />
             )}
 

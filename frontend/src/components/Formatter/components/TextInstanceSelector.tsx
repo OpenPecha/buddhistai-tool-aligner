@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTextInstances, useInstance, useAnnotation } from '../../../hooks/useTextData';
+import { useTextInstances, useInstance, useAnnotation, useTextTitleSearch } from '../../../hooks/useTextData';
 import { applySegmentation } from '../../../lib/annotation';
 import type { OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../../../types/text';
+import type { TextTitleSearchResult } from '../../../api/text';
 import type { SegmentAnnotation } from '../types';
 import type { BdrcSearchResult } from '../../Aligner/hooks/uesBDRC';
 import { useBdrcTextSelection } from '../../Aligner/hooks/useBdrcTextSelection';
@@ -75,6 +76,9 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Local text search hook - use bdrcSearchQuery for searching
+  const { results: localTextResults, isLoading: isLoadingLocalTexts, error: localTextError } = useTextTitleSearch(bdrcSearchQuery, 500);
 
   // BDRC search and selection hooks
   const {
@@ -243,6 +247,23 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     setShowDropdown(false);
   };
 
+  // Handle local text selection - use text ID directly without fetching
+  const handleLocalTextSelect = useCallback((text: TextTitleSearchResult) => {
+    // Use the text_id directly (no fetching needed, unlike BDRC selection)
+    setSelectedTextId(text.text_id);
+    setSelectedInstanceId(null);
+    setProcessingError(null);
+    
+    // Reset BDRC selection when manually selecting text
+    if (selectedBdrcResult) {
+      handleResetBdrcSelection();
+    }
+    
+    // Update search query to show selected text title
+    setBdrcSearchQuery(text.title);
+    setShowBdrcResults(false);
+  }, [selectedBdrcResult, handleResetBdrcSelection, setBdrcSearchQuery, setShowBdrcResults]);
+
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     setShowDropdown(value.length > 0); // Show dropdown when user types
@@ -309,7 +330,7 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
           </div>
         )}
 
-        {/* BDRC Search Panel */}
+        {/* BDRC Search Panel with Local Text Search */}
         <div className="max-w-md">
 
         {shouldShowBdrcSearch && (
@@ -323,6 +344,11 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
           selectedBdrcResult={selectedBdrcResult}
           onResultSelect={handleBdrcResultSelect}
           onCreateText={handleCreateTextFromBdrc}
+          localTextResults={localTextResults}
+          isLoadingLocalTexts={isLoadingLocalTexts}
+          localTextError={localTextError}
+          onLocalTextSelect={handleLocalTextSelect}
+          getDisplayTitle={getDisplayTitle}
           />
         )}
         </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchTexts, fetchTextInstances, fetchInstance, fetchAnnotation } from '../api/text';
+import { fetchTexts, fetchTextInstances, fetchInstance, fetchAnnotation, fetchTextsByTitle, type TextTitleSearchResult } from '../api/text';
 import { applySegmentation } from '../lib/annotation';
-import type { OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation } from '../types/text';
+import type { OpenPechaTextInstance, SegmentationAnnotation as APISegmentationAnnotation, OpenPechaText } from '../types/text';
 import type { SegmentAnnotation } from '../components/Formatter/types';
 
 // Query keys for React Query caching
@@ -50,6 +50,49 @@ export const useTexts = (params?: {
     queryFn: () => fetchTexts(params),
     refetchIntervalInBackground:true,
   });
+};
+
+/**
+ * Hook for searching texts by title with debouncing
+ * @param searchQuery - The search query string
+ * @param debounceMs - Debounce delay in milliseconds (default: 500ms)
+ * @returns search results and loading state
+ */
+export const useTextTitleSearch = (searchQuery: string, debounceMs: number = 500) => {
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+
+  // Debounce the search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, debounceMs]);
+
+  const trimmedQuery = debouncedQuery.trim();
+  const isEnabled = trimmedQuery.length > 0;
+
+  const { data, isLoading, error } = useQuery<TextTitleSearchResult[]>({
+    queryKey: ['textTitleSearch', trimmedQuery],
+    queryFn: async () => {
+      try {
+        const results = await fetchTextsByTitle(trimmedQuery);
+        return Array.isArray(results) ? results : [];
+      } catch (err) {
+        throw err;
+      }
+    },
+    enabled: isEnabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  return {
+    results: data ?? [],
+    isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Unknown error') : null,
+  };
 };
 
 /**

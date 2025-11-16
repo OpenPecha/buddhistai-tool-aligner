@@ -5,17 +5,24 @@ import { type BdrcSearchResult } from '../hooks/uesBDRC';
 interface SelectedTextDisplayProps {
   selectedBdrcResult: BdrcSearchResult | null;
   textId: string | null;
+  textTitle?: string | null;
   onReset: () => void;
 }
 
 export function SelectedTextDisplay({
   selectedBdrcResult,
   textId,
+  textTitle,
   onReset,
 }: SelectedTextDisplayProps) {
-  if (!selectedBdrcResult?.workId || !textId) {
+  // Show if we have either BDRC result or textId (for local text selections)
+  if (!textId) {
     return null;
   }
+  // Determine display title
+  const displayTitle = selectedBdrcResult 
+    ? (selectedBdrcResult.title || 'Untitled')
+    : (textTitle || 'Untitled');
 
   return (
     <div className="rounded-lg">
@@ -24,23 +31,21 @@ export function SelectedTextDisplay({
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             Selected Text
           </h3>
-          {selectedBdrcResult && (
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-900">
-                {selectedBdrcResult.prefLabel || selectedBdrcResult.workId || 'Untitled'}
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-gray-900">
+              {displayTitle}
+            </p>
+            {selectedBdrcResult?.workId && (
+              <p className="text-xs text-gray-500">
+                BDRC ID: {selectedBdrcResult.workId}
               </p>
-              {selectedBdrcResult.workId && (
-                <p className="text-xs text-gray-500">
-                  BDRC ID: {selectedBdrcResult.workId}
-                </p>
-              )}
-              {textId && (
-                <p className="text-xs text-gray-500">
-                  Text ID: {textId}
-                </p>
-              )}
-            </div>
-          )}
+            )}
+            {textId && (
+              <p className="text-xs text-gray-500">
+                Text ID: {textId}
+              </p>
+            )}
+          </div>
         </div>
         <button
           onClick={onReset}

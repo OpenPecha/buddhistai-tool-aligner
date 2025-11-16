@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useEditorContext } from '../context';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { createAnnotation } from '../../../api/text';
@@ -11,6 +12,7 @@ import { generateAlignment } from '../utils/generateAnnotation';
 
 const MappingSidebar = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { getSourceContent, getTargetContent, isContentValid } = useEditorContext();
   const { sourceInstanceId, targetInstanceId ,hasAlignment} = useTextSelectionStore();
   const [isContentInvalid, setIsContentInvalid] = React.useState(false);
@@ -41,6 +43,9 @@ const MappingSidebar = () => {
     onSuccess: () => {
       setSaveSuccess(t('mapping.alignmentSavedSuccess'));
       setSaveError(null);
+      // Show success alert and redirect to home page
+      window.alert(t('mapping.alignmentSavedSuccess'));
+      navigate('/');
     },
     onError: (error) => {
       console.error(t('mapping.savingAlignmentFailed'), error);
