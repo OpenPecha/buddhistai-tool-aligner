@@ -32,7 +32,6 @@ function AlignerContent() {
   return (
     <div className='w-full h-full flex flex-col min-h-0'>
       {/* Header */}
-         
       {bothTextLoaded && (
         <div className="shrink-0">
           <TextNavigationBar />
