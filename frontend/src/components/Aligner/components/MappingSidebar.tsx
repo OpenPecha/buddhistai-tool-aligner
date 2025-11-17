@@ -56,20 +56,20 @@ const MappingSidebar = () => {
 
 
   // Check content validity periodically
-  React.useEffect(() => {
-    const checkValidity = () => {
-      const isValid = isContentValid();
-      setIsContentInvalid(!isValid);
-    };
+  // React.useEffect(() => {
+  //   const checkValidity = () => {
+  //     const isValid = isContentValid();
+  //     setIsContentInvalid(!isValid);
+  //   };
     
-    // Check immediately
-    checkValidity();
+  //   // Check immediately
+  //   checkValidity();
     
-    // Check periodically (every 500ms)
-    const interval = setInterval(checkValidity, 500);
+  //   // Check periodically (every 500ms)
+  //   const interval = setInterval(checkValidity, 500);
     
-    return () => clearInterval(interval);
-  }, [isContentValid]);
+  //   return () => clearInterval(interval);
+  // }, [isContentValid]);
 
   // Handle saving alignment annotation
   const handleSave = () => {
