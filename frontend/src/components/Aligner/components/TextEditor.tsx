@@ -5,6 +5,7 @@ import { EditorView, keymap } from '@codemirror/view';
 import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '../types';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useEditorContext } from '../context';
+import { cleanAnnotation } from '../../../api/text';
 
 interface TextEditorProps {
   readonly ref: React.RefObject<ReactCodeMirrorRef | null> | null;
@@ -246,6 +247,13 @@ function TextEditor({
 
   const showSourceSelectionRequired = false;
 
+  // State for sample text modal
+  const [showSampleTextModal, setShowSampleTextModal] = React.useState(false);
+  const [sampleText, setSampleText] = React.useState('');
+  const [isLoadingCleanAnnotation, setIsLoadingCleanAnnotation] = React.useState(false);
+  const [cleanAnnotationResult, setCleanAnnotationResult] = React.useState<unknown>(null);
+  const [cleanAnnotationError, setCleanAnnotationError] = React.useState<string | null>(null);
+
   // Create extension to handle backspace for line merging or block deletion keys
   const blockDeletionExtension = React.useMemo(() => {
     // Command to merge current line with previous line when backspace is pressed at line start
@@ -441,11 +449,93 @@ function TextEditor({
     });
   }, [isFullyEditable]);
 
+  function handleLoadSampleText() {
+    setShowSampleTextModal(true);
+    setSampleText('');
+    setCleanAnnotationResult(null);
+    setCleanAnnotationError(null);
+  }
+
+  async function handleSubmitSampleText() {
+    if (!sampleText.trim()) {
+      setCleanAnnotationError('Please enter sample text');
+      return;
+    }
+
+    const content = value.replaceAll('\n', '');
+    if (!content.trim()) {
+      setCleanAnnotationError('No content available to clean');
+      return;
+    }
+
+    setIsLoadingCleanAnnotation(true);
+    setCleanAnnotationError(null);
+    setCleanAnnotationResult(null);
+
+    try {
+      const response = await cleanAnnotation({
+        text: content,
+        sample_text: sampleText.trim()
+      });
+      setCleanAnnotationResult(response);
+      console.log('Clean annotation response:', response);
+      
+      // Extract cleaned text from response (check common field names)
+      const extractCleanedText = (resp: unknown): string | null => {
+        if (typeof resp === 'string') {
+          return resp;
+        }
+        if (resp && typeof resp === 'object') {
+          const obj = resp as Record<string, unknown>;
+          return (obj.content as string) || (obj.text as string) || (obj.cleaned_text as string) || (obj.result as string) || null;
+        }
+        return null;
+      };
+      
+      const cleanedText = extractCleanedText(response);
+      
+      if (cleanedText) {
+        // Update the editor value with cleaned text
+        setValue(cleanedText);
+        originalTextRef.current = cleanedText;
+        
+        // Update context with new original text
+        if (editorType === 'source') {
+          setOriginalSourceText(cleanedText);
+        } else {
+          setOriginalTargetText(cleanedText);
+        }
+        
+        // Update store if it's a target editor
+        if (editorType === 'target' && (wasInitiallyEmptyTarget || targetLoadType === 'file')) {
+          setTargetTextFromFile(cleanedText);
+        }
+      } else {
+        setCleanAnnotationError('Response does not contain cleaned text content');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to clean annotation';
+      setCleanAnnotationError(errorMessage);
+      console.error('Error cleaning annotation:', error);
+    } finally {
+      setIsLoadingCleanAnnotation(false);
+    }
+  }
+
+  function handleCloseModal() {
+    setShowSampleTextModal(false);
+    setSampleText('');
+    setCleanAnnotationResult(null);
+    setCleanAnnotationError(null);
+  }
 
   return (
     <div className="editor-container box-border relative h-full w-full" 
     style={{ fontSize: `${fontSize}px` } as React.CSSProperties}
     >
+        <button
+      className='absolute top-2 right-2 z-10 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1'
+      onClick={() => handleLoadSampleText()}>Load Sample Text</button>
         <CodeMirror 
           value={value}  
           height="100%"
@@ -499,6 +589,92 @@ function TextEditor({
               </div>
               <div className="text-xs text-gray-600">
                 Please select both text and instance in the source editor first before selecting target text for alignment.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sample Text Modal */}
+        {showSampleTextModal && (
+          <div className="absolute inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-2xl max-h-[80vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={isLoadingCleanAnnotation}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="px-6 py-4 flex-1 overflow-auto">
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="sample-text" className="block text-sm font-medium text-gray-700 mb-2">
+                      Sample Text *
+                    </label>
+                    <textarea
+                      id="sample-text"
+                      value={sampleText}
+                      onChange={(e) => setSampleText(e.target.value)}
+                      disabled={isLoadingCleanAnnotation}
+                      placeholder="Enter or paste the sample text here..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-['monlam']"
+                      rows={10}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter the sample text that will be used to clean the annotations.
+                    </p>
+                  </div>
+
+                  {/* Error Message */}
+                  {cleanAnnotationError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-800">{cleanAnnotationError}</p>
+                    </div>
+                  )}
+
+                  {/* Success Result */}
+                  {cleanAnnotationResult !== null && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-sm font-medium text-green-800 mb-2">Success!</p>
+                      <pre className="text-xs text-green-700 overflow-auto max-h-60 bg-white p-2 rounded border border-green-300">
+                        {String(JSON.stringify(cleanAnnotationResult, null, 2))}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
+                <button
+                  onClick={handleCloseModal}
+                  disabled={isLoadingCleanAnnotation}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {cleanAnnotationResult !== null ? 'Close' : 'Cancel'}
+                </button>
+                {cleanAnnotationResult === null && (
+                  <button
+                    onClick={handleSubmitSampleText}
+                    disabled={isLoadingCleanAnnotation || !sampleText.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  >
+                    {isLoadingCleanAnnotation && (
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {isLoadingCleanAnnotation ? 'Processing...' : 'Clean Annotation'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

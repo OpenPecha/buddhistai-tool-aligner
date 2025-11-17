@@ -42,8 +42,13 @@ function Editor({
   
   const shouldShowLoadingOverlay = isLoadingAnnotations && shouldShowContent;
   
+
+
+
  return (
+
     <div className="relative flex-1 min-h-0 w-full overflow-hidden flex flex-col">
+    
       {shouldShowContent ? (
         <>
           <div className="flex-1 min-h-0 overflow-auto">

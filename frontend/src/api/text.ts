@@ -404,3 +404,26 @@ export const fetchAlignmentInference = async (textId: string): Promise<{
   
   return await response.json();
 };
+
+
+// API function for cleaning annotations
+export const cleanAnnotation = async (data: {
+  text: string;
+  sample_text: string;
+}): Promise<any> => {
+  const response = await fetch(`${API_URL}/v2/annotations/clean-annotation`, {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.details || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
