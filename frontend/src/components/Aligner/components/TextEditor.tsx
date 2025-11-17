@@ -457,13 +457,13 @@ function TextEditor({
   }
 
   async function handleSubmitSampleText() {
-    if (!sampleText.trim()) {
+    if (!sampleText) {
       setCleanAnnotationError('Please enter sample text');
       return;
     }
 
     const content = value.replaceAll('\n', '');
-    if (!content.trim()) {
+    if (!content) {
       setCleanAnnotationError('No content available to clean');
       return;
     }
@@ -475,7 +475,7 @@ function TextEditor({
     try {
       const response = await cleanAnnotation({
         text: content,
-        sample_text: sampleText.trim()
+        sample_text: sampleText
       });
       setCleanAnnotationResult(response);
       console.log('Clean annotation response:', response);
