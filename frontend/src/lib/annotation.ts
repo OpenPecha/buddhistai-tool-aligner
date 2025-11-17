@@ -23,9 +23,6 @@ export function getAnnotation (text: string){
  * @returns Segmented text with separators between segments
  */
 export function applySegmentation(text: string, segmentations: Array<{span: {start: number, end: number}}>): string {
-    console.log('🔧 applySegmentation: Starting annotation application');
-    console.log('📝 Input text length:', text?.length || 0);
-    console.log('📊 Number of segmentations:', segmentations?.length || 0);
     
     if (!text) {
         console.log('⚠️ applySegmentation: No text provided, returning empty string');
@@ -65,42 +62,30 @@ export function applySegmentation(text: string, segmentations: Array<{span: {sta
 
     // Sort segmentations by start position
     const sortedSegmentations = [...segmentations].sort((a, b) => a.span.start - b.span.start);
-    console.log('🔄 Sorted segmentations by start position:', sortedSegmentations.map(seg => ({
-        start: seg.span.start,
-        end: seg.span.end
-    })));
+ 
 
     // Build the result by inserting newlines at segment boundaries
-    console.log('🏗️ Building segmented text...');
     let result = '';
     let lastEnd = 0;
 
     for (let i = 0; i < sortedSegmentations.length; i++) {
         const seg = sortedSegmentations[i];
         
-        console.log(`📍 Processing segment ${i + 1}/${sortedSegmentations.length}:`, {
-            start: seg.span.start,
-            end: seg.span.end,
-            lastEnd,
-            segmentText: text.substring(seg.span.start, seg.span.end)
-        });
+    
         
         // Add text from lastEnd to the start of this segment
         const gapText = text.substring(lastEnd, seg.span.start);
         if (gapText) {
-            console.log(`  📄 Adding gap text (${lastEnd}-${seg.span.start}):`, JSON.stringify(gapText));
             result += gapText;
         }
         
         // Add newline BEFORE the segment (but not for the first segment, unless it's at position 0)
         if (i > 0 || seg.span.start > 0) {
-            console.log('  ↩️ Adding newline separator');
             result += '\n';
         }
         
         // Add the segment itself
         const segmentText = text.substring(seg.span.start, seg.span.end);
-        console.log(`  ➕ Adding segment text:`, JSON.stringify(segmentText));
         result += segmentText;
         
         lastEnd = seg.span.end;
@@ -109,18 +94,8 @@ export function applySegmentation(text: string, segmentations: Array<{span: {sta
     // Add any remaining text after the last segment
     if (lastEnd < text.length) {
         const remainingText = text.substring(lastEnd);
-        console.log('📄 Adding remaining text after last segment:', JSON.stringify(remainingText));
         result += remainingText;
     }
-
-    console.log('✅ applySegmentation: Completed successfully');
-    console.log('📊 Result statistics:', {
-        originalLength: text.length,
-        resultLength: result.length,
-        segmentCount: sortedSegmentations.length,
-        linesInResult: result.split('\n').length
-    });
-    console.log('📝 Final result preview (first 200 chars):', JSON.stringify(result.substring(0, 200)));
 
     return result;
 }

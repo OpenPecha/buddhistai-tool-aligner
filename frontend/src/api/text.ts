@@ -427,3 +427,49 @@ export const cleanAnnotation = async (data: {
 
   return await response.json();
 };
+
+export const updateAnnotation = async (annotationId: string, annotationData: {
+  type?: string;
+  target_manifestation_id?: string;
+  target_annotation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+    index: number;
+  }>;
+  alignment_annotation?: Array<{
+    span: {
+      start: number;
+      end: number;
+    };
+    index: number;
+    alignment_index: number[];
+  }>;
+  content?: string;
+}): Promise<Annotations> => {
+  // Transform the data to match the expected schema
+  const requestBody = {
+    type: annotationData.type,
+    data: {
+      alignment_annotation: annotationData.alignment_annotation,
+      target_annotation: annotationData.target_annotation
+    }
+  };
+
+  const response = await fetch(`${API_URL}/v2/annotations/${annotationId}/annotation`, {
+    method: 'PUT',
+    headers: {
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.details || errorData.detail || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};

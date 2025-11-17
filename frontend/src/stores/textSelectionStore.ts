@@ -23,6 +23,21 @@ interface TextSelectionState {
   
   hasAlignment: boolean;
   
+  // Annotation data with content
+  annotationData: {
+    target_annotation: Array<{
+      id?: string | null;
+      span: { start: number; end: number };
+      content?: string;
+    } | null>;
+    alignment_annotation: Array<{
+      id?: string | null;
+      span: { start: number; end: number };
+      aligned_segments?: string[];
+      content?: string;
+    } | null>;
+  } | null;
+  
   // Actions
   setSourceText: (textId: string, instanceId: string, content: string, loadType?: 'database' | 'file') => void;
   setTargetText: (textId: string, instanceId: string, content: string, loadType?: 'database' | 'file') => void;
@@ -38,6 +53,19 @@ interface TextSelectionState {
   setLoadingAnnotations: (isLoading: boolean, message?: string) => void;
   setAnnotationsApplied: (applied: boolean) => void;
   setHasAlignment:(hasAlignment: boolean) => void;
+  setAnnotationData: (data: {
+    target_annotation: Array<{
+      id?: string | null;
+      span: { start: number; end: number };
+      content?: string;
+    } | null>;
+    alignment_annotation: Array<{
+      id?: string | null;
+      span: { start: number; end: number };
+      aligned_segments?: string[];
+      content?: string;
+    } | null>;
+  } | null) => void;
   resetAllSelections: () => void;
 }
 
@@ -64,9 +92,16 @@ export const useTextSelectionStore = create<TextSelectionState>((set) => ({
 
   hasAlignment: false,
   
+  annotationData: null,
+  
   setHasAlignment: (hasAlignment: boolean) =>
     set({
       hasAlignment: hasAlignment,
+    }),
+  
+  setAnnotationData: (data) =>
+    set({
+      annotationData: data,
     }),
   // Actions
   setSourceText: (textId: string, instanceId: string, content: string, loadType: 'database' | 'file' = 'database') =>

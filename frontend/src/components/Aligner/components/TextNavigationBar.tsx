@@ -114,30 +114,15 @@ function TextNavigationBar() {
   return (
     <div className="bg-white border-b border-gray-200 p-3">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">{t('aligner.source')}:</span>
-            <div className="text-sm font-['Noto'] text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
-              {!isSourceLoaded || sourceLoadType === 'file' ? 
-                (sourceLoadType === 'file' ? t('aligner.sourceText') : t('common.notSelected')) : 
-                getInstanceDisplayName(sourceInstanceData, selectedSourceInstanceId)}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">{t('aligner.target')}:</span>
-            <div className="text-sm font-['Noto'] text-gray-900 border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[200px]">
-              {!isTargetLoaded || targetLoadType === 'file' ? 
-                (targetLoadType === 'file' ? t('aligner.targetText') : t('aligner.emptyTargetFile')) : 
-                getInstanceDisplayName(targetInstanceData, selectedTargetInstanceId)}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex items-center gap-2 justify-between w-full">
           {/* Scroll Sync Toggle */}
+          <div className='flex items-center gap-2'>
+
           <label className={`flex items-center gap-2 text-sm cursor-pointer transition-colors px-2 py-1 rounded ${
             isScrollSyncEnabled 
-              ? 'text-blue-700 bg-blue-50 hover:bg-blue-100' 
-              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+            ? 'text-blue-700 bg-blue-50 hover:bg-blue-100' 
+            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
           }`}>
             <input
               type="checkbox"
@@ -158,6 +143,11 @@ function TextNavigationBar() {
             className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
           >
             {t('common.reset')}
+          </button>
+          </div>
+
+          <button className="w-fit px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+            Publish
           </button>
         </div>
       </div>
