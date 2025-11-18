@@ -97,7 +97,7 @@ const ToolCard = ({
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">
           {title}
         </h2>
-        <p className="text-gray-600 mb-6 flex-1">
+        <p className="text-gray-600 mb-6 flex-1 leading-normal">
           {description}
         </p>
         {button}
