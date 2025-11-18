@@ -15,9 +15,9 @@ const MappingSidebar = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getSourceContent, getTargetContent, isContentValid } = useEditorContext();
-  const { sourceInstanceId, targetInstanceId, hasAlignment, sourceText, targetText } = useTextSelectionStore();
+  const { sourceInstanceId, targetInstanceId, hasAlignment, sourceText, targetText,clearAllSelections,resetAllSelections } = useTextSelectionStore();
   const [annotationId, setAnnotationId] = useState<string | null>(null);
-  
+ 
   // Local state for success/error messages
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -82,6 +82,8 @@ const MappingSidebar = () => {
       setSaveError(null);
       // Show success alert and redirect to home page
       globalThis.alert(t('mapping.alignmentSavedSuccess'));
+      clearAllSelections();
+      resetAllSelections();
       navigate('/');
     },
     onError: (error) => {
@@ -114,6 +116,8 @@ const MappingSidebar = () => {
     onSuccess: () => {
       setSaveSuccess(t('mapping.alignmentUpdatedSuccess') || 'Alignment updated successfully');
       setSaveError(null);
+      clearAllSelections();
+      resetAllSelections();
       // Show success alert and redirect to home page
       globalThis.alert(t('mapping.alignmentUpdatedSuccess') || 'Alignment updated successfully');
       navigate('/');
@@ -288,9 +292,9 @@ const MappingSidebar = () => {
           {(() => {
             const isPending = createAnnotationMutation.isPending || updateAnnotationMutation.isPending;
             if (isPending) {
-              return hasAlignment ? (t('mapping.updating') || 'Updating...') : t('mapping.publishing');
+              return hasAlignment ? 'Updating...' : 'Publishing...';
             }
-            return hasAlignment ? (t('mapping.saveUpdate') || 'Save/Update') : t('mapping.publish');
+            return hasAlignment ? 'Save/Update': "Publish";
           })()}
         </button>
       </div>

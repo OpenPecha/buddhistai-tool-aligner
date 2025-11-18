@@ -297,14 +297,7 @@ const AlignmentMappingView: React.FC = () => {
       {/* Content: Editor or Blocks */}
       {showEditor ? (
         <div className="flex-1 min-h-0 overflow-hidden flex gap-2 relative">
-          {/* Loading Overlay */}
-          {isLoadingMergedText && (
-            <LoadingOverlay 
-              isVisible={true} 
-              message="Calculating aligned content..."
-              className="z-10"
-            />
-          )}
+      
           
           {/* Source Editor */}
           <div className="flex-1 min-h-0 flex flex-col">
