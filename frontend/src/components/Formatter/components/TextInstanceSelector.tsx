@@ -78,7 +78,6 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   const searchRef = useRef<HTMLDivElement>(null);
 
   // Local text search hook - use bdrcSearchQuery for searching
-  const { results: localTextResults, isLoading: isLoadingLocalTexts, error: localTextError } = useTextTitleSearch(bdrcSearchQuery, 500);
 
   // BDRC search and selection hooks
   const {
@@ -94,6 +93,8 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     handleResetBdrcSelection: handleResetBdrcSelectionBase,
     hasSelectedText,
   } = useBdrcTextSelection();
+
+  const { results: localTextResults, isLoading: isLoadingLocalTexts, error: localTextError } = useTextTitleSearch(bdrcSearchQuery, 500);
 
   // Get text ID from BDRC selection
   const selectedTextIdFromBdrc = useMemo(() => {

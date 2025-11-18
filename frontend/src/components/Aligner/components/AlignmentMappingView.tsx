@@ -3,7 +3,6 @@ import CodeMirror from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { fetchInstance } from '../../../api/text';
-import LoadingOverlay from './LoadingOverlay';
 
 const AlignmentMappingView: React.FC = () => {
   const { 
