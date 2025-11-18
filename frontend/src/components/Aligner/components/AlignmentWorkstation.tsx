@@ -163,13 +163,7 @@ function AlignmentWorkstationContent() {
               maxSize={90}
               className="min-h-0 flex flex-col bg-white border-r border-gray-200"
             >
-              {/* Mapping Panel Header */}
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                  <h3 className="text-sm font-semibold text-gray-700">Alignment Mappings</h3>
-                </div>
-              </div>
+       
               {/* Mapping Content */}
               <div className="flex-1 min-h-0 overflow-hidden">
                 <AlignmentMappingView />

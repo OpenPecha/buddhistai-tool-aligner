@@ -3,21 +3,19 @@ import CodeMirror from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { fetchInstance } from '../../../api/text';
+import LoadingOverlay from './LoadingOverlay';
 
 const AlignmentMappingView: React.FC = () => {
   const { 
     annotationData,
     sourceInstanceId,
-    targetInstanceId,
-    sourceTextId,
-    setSourceText,
-    setTargetText
+    targetInstanceId
   } = useTextSelectionStore();
   
   const [isLoadingMergedText, setIsLoadingMergedText] = React.useState(false);
   const [sourceContent, setSourceContent] = React.useState<string>('');
   const [targetContent, setTargetContent] = React.useState<string>('');
-  const [showEditor, setShowEditor] = React.useState(false);
+  const [showEditor, setShowEditor] = React.useState(true);
 
   // Memoize rows calculation
   const rows = React.useMemo(() => {
@@ -261,178 +259,6 @@ const AlignmentMappingView: React.FC = () => {
     }
   }, [rows, sourceInstanceId, targetInstanceId, annotationData]);
 
-  const handleOpenMergedText = async () => {
-    if (!sourceInstanceId || !targetInstanceId || !annotationData) {
-      console.error('Source or target instance ID is missing, or annotation data is not available');
-      return;
-    }
-
-    setIsLoadingMergedText(true);
-    try {
-      // Fetch original instance data to get full text content
-      const [sourceInstanceData, targetInstanceData] = await Promise.all([
-        fetchInstance(sourceInstanceId),
-        fetchInstance(targetInstanceId)
-      ]);
-
-      const sourceContent = sourceInstanceData.content || '';
-      const targetContent = targetInstanceData.content || '';
-      // Reconstruct aligned text from rows data
-      // Each row represents an alignment, and aligned segments should appear on the same line numbers
-      const alignedSourceLines: string[] = [];
-      const alignedTargetLines: string[] = [];
-
-      // Track positions to handle gaps
-      let sourceLastEnd = 0;
-      let targetLastEnd = 0;
-
-      // Process each row to build aligned text
-      for (const row of rows) {
-        const { alignment, sources } = row;
-        const hasAlignment = alignment && alignment.id !== null;
-        const hasSources = sources.length > 0;
-
-        if (hasSources && hasAlignment) {
-          // Both source and target exist - align them on the same line
-          
-          // Handle gaps before source segments
-          if (sources.length > 0 && sources[0]?.source) {
-            const firstSource = sources[0].source;
-            if (firstSource.span.start > sourceLastEnd) {
-              const gapText = sourceContent.substring(sourceLastEnd, firstSource.span.start);
-              if (gapText.trim().length > 0 || gapText.length > 0) {
-                alignedSourceLines.push(gapText);
-                alignedTargetLines.push(''); // Empty line to maintain alignment
-              }
-            }
-          }
-
-          // Handle gaps before target segment
-          if (alignment.span.start > targetLastEnd) {
-            const gapText = targetContent.substring(targetLastEnd, alignment.span.start);
-            if (gapText.trim().length > 0 || gapText.length > 0) {
-              alignedTargetLines.push(gapText);
-              alignedSourceLines.push(''); // Empty line to maintain alignment
-            }
-          }
-
-          // Combine all source segments for this row
-          const sourceSegments = sources
-            .map(({ source }) => {
-              if (!source) return '';
-              return sourceContent.substring(source.span.start, source.span.end);
-            })
-            .filter(seg => seg.length > 0);
-
-          // Get target segment
-          const targetSegment = targetContent.substring(alignment.span.start, alignment.span.end);
-
-          // Add aligned segments on the same line
-          if (sourceSegments.length > 0 || targetSegment.length > 0) {
-            alignedSourceLines.push(sourceSegments.join(' '));
-            alignedTargetLines.push(targetSegment);
-          }
-
-          // Update last end positions
-          const lastSource = sources.length > 0 ? sources.at(-1)?.source : null;
-          if (lastSource) {
-            sourceLastEnd = Math.max(sourceLastEnd, lastSource.span.end);
-          }
-          targetLastEnd = Math.max(targetLastEnd, alignment.span.end);
-
-        } else if (hasSources && !hasAlignment) {
-          // Only source exists - add source, empty target line
-          for (const { source } of sources) {
-            if (!source) continue;
-            
-            // Handle gap before source
-            if (source.span.start > sourceLastEnd) {
-              const gapText = sourceContent.substring(sourceLastEnd, source.span.start);
-              if (gapText.trim().length > 0 || gapText.length > 0) {
-                alignedSourceLines.push(gapText);
-                alignedTargetLines.push('');
-              }
-            }
-
-            const sourceSegment = sourceContent.substring(source.span.start, source.span.end);
-            if (sourceSegment.length > 0) {
-              alignedSourceLines.push(sourceSegment);
-              alignedTargetLines.push(''); // Empty target line
-            }
-            sourceLastEnd = Math.max(sourceLastEnd, source.span.end);
-          }
-        } else if (!hasSources && hasAlignment) {
-          // Only target exists - add target, empty source line
-          
-          // Handle gap before target
-          if (alignment.span.start > targetLastEnd) {
-            const gapText = targetContent.substring(targetLastEnd, alignment.span.start);
-            if (gapText.trim().length > 0 || gapText.length > 0) {
-              alignedTargetLines.push(gapText);
-              alignedSourceLines.push(''); // Empty source line
-            }
-          }
-
-          const targetSegment = targetContent.substring(alignment.span.start, alignment.span.end);
-          if (targetSegment.length > 0) {
-            alignedTargetLines.push(targetSegment);
-            alignedSourceLines.push(''); // Empty source line
-          }
-          targetLastEnd = Math.max(targetLastEnd, alignment.span.end);
-        }
-      }
-
-      // Handle any remaining content after the last annotations
-      if (sourceLastEnd < sourceContent.length) {
-        const remainingText = sourceContent.substring(sourceLastEnd);
-        if (remainingText.trim().length > 0 || remainingText.length > 0) {
-          alignedSourceLines.push(remainingText);
-          alignedTargetLines.push(''); // Empty target line to maintain alignment
-        }
-      }
-
-      if (targetLastEnd < targetContent.length) {
-        const remainingText = targetContent.substring(targetLastEnd);
-        if (remainingText.trim().length > 0 || remainingText.length > 0) {
-          alignedTargetLines.push(remainingText);
-          alignedSourceLines.push(''); // Empty source line to maintain alignment
-        }
-      }
-
-      // Ensure both arrays have the same length (pad with empty strings if needed)
-      const maxLength = Math.max(alignedSourceLines.length, alignedTargetLines.length);
-      while (alignedSourceLines.length < maxLength) {
-        alignedSourceLines.push('');
-      }
-      while (alignedTargetLines.length < maxLength) {
-        alignedTargetLines.push('');
-      }
-
-      // Join lines with newlines to create the final text
-      const alignedSourceText = alignedSourceLines.join('\n');
-      const alignedTargetText = alignedTargetLines.join('\n');
-
-      // Set the aligned text in both editors
-      setSourceText(
-        sourceTextId || sourceInstanceData.id || 'source-instance',
-        sourceInstanceId,
-        alignedSourceText,
-        'database'
-      );
-
-      setTargetText(
-        `related-${targetInstanceId}`,
-        targetInstanceId,
-        alignedTargetText,
-        'database'
-      );
-    } catch (error) {
-      console.error('Error loading merged text:', error);
-    } finally {
-      setIsLoadingMergedText(false);
-    }
-  };
-
   // Generate merged content on mount or when rows change
   React.useEffect(() => {
     if (rows.length > 0 && sourceInstanceId && targetInstanceId) {
@@ -449,9 +275,9 @@ const AlignmentMappingView: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-0 h-[80vh] pb-[20px]">
+    <div className="flex flex-col min-h-0 h-[86vh] pb-[10px]">
       {/* Headers */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 shrink-0">
+      {/* <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -465,62 +291,59 @@ const AlignmentMappingView: React.FC = () => {
           >
             {showEditor ? 'Show Blocks' : 'Show Editor'}
           </button>
-          <button
-            onClick={generateMergedContent}
-            disabled={isLoadingMergedText || !sourceInstanceId || !targetInstanceId}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            {isLoadingMergedText ? (
-              <>
-                <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading...
-              </>
-            ) : (
-              'Refresh Merged Content'
-            )}
-          </button>
-          <button
-            onClick={handleOpenMergedText}
-            disabled={isLoadingMergedText || !sourceInstanceId || !targetInstanceId}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            Open Merged Text
-          </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Content: Editor or Blocks */}
       {showEditor ? (
-        <div className="flex-1 min-h-0 overflow-hidden flex gap-2">
+        <div className="flex-1 min-h-0 overflow-hidden flex gap-2 relative">
+          {/* Loading Overlay */}
+          {isLoadingMergedText && (
+            <LoadingOverlay 
+              isVisible={true} 
+              message="Calculating aligned content..."
+              className="z-10"
+            />
+          )}
+          
           {/* Source Editor */}
           <div className="flex-1 min-h-0 flex flex-col">
             <div className="px-4 py-2 bg-green-50 border-b border-green-200 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
                 <h3 className="text-sm font-semibold text-gray-700">Source Text</h3>
+                {isLoadingMergedText && (
+                  <span className="text-xs text-gray-500 ml-2">Loading...</span>
+                )}
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <CodeMirror
-                value={sourceContent}
-                height="100%"
-                width="100%"
-                className="font-['monlam'] h-full"
-                editable={false}
-                basicSetup={{
-                  lineNumbers: true,
-                  foldGutter: true,
-                  dropCursor: false,
-                  allowMultipleSelections: false,
-                  highlightSelectionMatches: false,
-                }}
-                extensions={[
-                  EditorView.lineWrapping,
-                ]}
-              />
+            <div className="flex-1 min-h-0 overflow-hidden relative">
+              {isLoadingMergedText && !sourceContent ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin"></div>
+                    <p className="text-sm text-gray-500">Preparing source content...</p>
+                  </div>
+                </div>
+              ) : (
+                <CodeMirror
+                  value={sourceContent}
+                  height="100%"
+                  width="100%"
+                  className="font-['monlam'] h-full"
+                  editable={false}
+                  basicSetup={{
+                    lineNumbers: true,
+                    foldGutter: true,
+                    dropCursor: false,
+                    allowMultipleSelections: false,
+                    highlightSelectionMatches: false,
+                  }}
+                  extensions={[
+                    EditorView.lineWrapping,
+                  ]}
+                />
+              )}
             </div>
           </div>
 
@@ -530,26 +353,38 @@ const AlignmentMappingView: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                 <h3 className="text-sm font-semibold text-gray-700">Target Text</h3>
+                {isLoadingMergedText && (
+                  <span className="text-xs text-gray-500 ml-2">Loading...</span>
+                )}
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <CodeMirror
-                value={targetContent}
-                height="100%"
-                width="100%"
-                className="font-['monlam'] h-full"
-                editable={false}
-                basicSetup={{
-                  lineNumbers: true,
-                  foldGutter: true,
-                  dropCursor: false,
-                  allowMultipleSelections: false,
-                  highlightSelectionMatches: false,
-                }}
-                extensions={[
-                  EditorView.lineWrapping,
-                ]}
-              />
+            <div className="flex-1 min-h-0 overflow-hidden relative">
+              {isLoadingMergedText && !targetContent ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+                    <p className="text-sm text-gray-500">Preparing target content...</p>
+                  </div>
+                </div>
+              ) : (
+                <CodeMirror
+                  value={targetContent}
+                  height="100%"
+                  width="100%"
+                  className="font-['monlam'] h-full"
+                  editable={false}
+                  basicSetup={{
+                    lineNumbers: true,
+                    foldGutter: true,
+                    dropCursor: false,
+                    allowMultipleSelections: false,
+                    highlightSelectionMatches: false,
+                  }}
+                  extensions={[
+                    EditorView.lineWrapping,
+                  ]}
+                />
+              )}
             </div>
           </div>
         </div>
