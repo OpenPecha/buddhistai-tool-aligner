@@ -15,7 +15,7 @@ const MappingSidebar = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getSourceContent, getTargetContent, isContentValid } = useEditorContext();
-  const { sourceInstanceId, targetInstanceId, hasAlignment } = useTextSelectionStore();
+  const { sourceInstanceId, targetInstanceId, hasAlignment, sourceText, targetText } = useTextSelectionStore();
   const [annotationId, setAnnotationId] = useState<string | null>(null);
   
   // Local state for success/error messages
@@ -147,10 +147,13 @@ const MappingSidebar = () => {
       setSaveError(t('mapping.contentModifiedError'));
       return;
     }
-
-    // Get source and target content
-    const sourceContent = getSourceContent();
-    const targetContent = getTargetContent();
+    
+    // Get source and target content from editors, with fallback to store
+    const editorSourceContent = getSourceContent();
+    const editorTargetContent = getTargetContent();
+    // Use editor content if available, otherwise fallback to store content
+    const sourceContent = editorSourceContent ?? sourceText ?? '';
+    const targetContent = editorTargetContent ?? targetText ?? '';
     
     if (!sourceContent || !targetContent) {
       setSaveError(t('mapping.sourceAndTargetContentRequired'));
@@ -160,7 +163,6 @@ const MappingSidebar = () => {
     const targetSegments = targetContent.split('\n');
 
     const spans = generateAlignment(sourceSegments, targetSegments);
-    console.log(spans);
 
     // Use update if hasAlignment and annotationId exists, otherwise create
     if (hasAlignment && annotationId) {
@@ -179,20 +181,22 @@ const MappingSidebar = () => {
           index: typeof item.index === 'string' ? Number.parseInt(item.index, 10) : (item.index ?? 0),
           alignment_index: (item.alignment_index ?? []).map(idx => typeof idx === 'string' ? Number.parseInt(idx, 10) : idx),
         }));
-
-      updateAnnotationMutation.mutate({
-        annotationId,
-        annotationData: {
-          type: 'alignment',
-          target_manifestation_id: sourceInstanceId,
-          target_annotation: targetAnnotation,
-          alignment_annotation: alignmentAnnotation,
-        },
-      });
+      console.log(targetAnnotation, alignmentAnnotation);
+      // updateAnnotationMutation.mutate({
+      //   annotationId,
+      //   annotationData: {
+      //     type: 'alignment',
+      //     target_manifestation_id: sourceInstanceId,
+      //     target_annotation: targetAnnotation,
+      //     alignment_annotation: alignmentAnnotation,
+      //   },
+      // });
     } else {
       // Convert to number format for createAnnotation
+      const checkCondition=(d)=>d.span.start<d.span.end;
       const createTargetAnnotation = spans.target_annotation
         .filter(item => item.index !== undefined && item.index !== null)
+        .filter(checkCondition)
         .map(item => ({
           span: item.span,
           index: typeof item.index === 'string' ? Number.parseInt(item.index, 10) : (item.index ?? 0),
@@ -200,19 +204,54 @@ const MappingSidebar = () => {
 
       const createAlignmentAnnotation = spans.alignment_annotation
         .filter(item => item.index !== undefined && item.index !== null && item.alignment_index !== undefined)
+        .filter(checkCondition)
         .map(item => ({
           span: item.span,
           index: typeof item.index === 'string' ? Number.parseInt(item.index, 10) : (item.index ?? 0),
           alignment_index: (item.alignment_index ?? []).map(idx => typeof idx === 'string' ? Number.parseInt(idx, 10) : idx),
         }));
-      console.log(createTargetAnnotation, createAlignmentAnnotation);
+        function filterAlignedArrays(arr1, arr2) {
+          // Collect all indices from arr1
+          const arr1IndicesSet = new Set();
+          for (const item of arr1) {
+              arr1IndicesSet.add(item.index);
+          }
+          
+          // Collect all indices that appear in arr2's alignment_index arrays
+          const alignmentIndicesSet = new Set();
+          for (const item of arr2) {
+              if (item.alignment_index && Array.isArray(item.alignment_index)) {
+                  for (const idx of item.alignment_index) {
+                      alignmentIndicesSet.add(idx);
+                  }
+              }
+          }
+          
+          // Filter arr1: keep only elements whose index exists in arr2's alignment_index
+          const filteredArr1 = arr1.filter(item => alignmentIndicesSet.has(item.index));
+          
+          // Filter arr2: keep only elements whose alignment_index contains at least one index from arr1
+          const filteredArr2 = arr2.filter(item => {
+              if (!item.alignment_index || !Array.isArray(item.alignment_index)) {
+                  return false;
+              }
+              return item.alignment_index.some(idx => arr1IndicesSet.has(idx));
+          });
+          
+          return {
+              source: filteredArr1,
+              target: filteredArr2
+          };
+      }
+       const filtered = filterAlignedArrays(createTargetAnnotation, createAlignmentAnnotation);
+
       createAnnotationMutation.mutate({
         inferenceId: targetInstanceId,
         annotationData: {
           type: 'alignment',
           target_manifestation_id: sourceInstanceId,
-          target_annotation: createTargetAnnotation,
-          alignment_annotation: createAlignmentAnnotation,
+          target_annotation: filtered.source,
+          alignment_annotation: filtered.target,
         },
       });
     }

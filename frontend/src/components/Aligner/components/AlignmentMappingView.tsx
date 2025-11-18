@@ -1,8 +1,444 @@
 import React from 'react';
+import CodeMirror from '@uiw/react-codemirror';
+import { EditorView } from '@codemirror/view';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
+import { fetchInstance } from '../../../api/text';
 
 const AlignmentMappingView: React.FC = () => {
-  const { annotationData } = useTextSelectionStore();
+  const { 
+    annotationData,
+    sourceInstanceId,
+    targetInstanceId,
+    sourceTextId,
+    setSourceText,
+    setTargetText
+  } = useTextSelectionStore();
+  
+  const [isLoadingMergedText, setIsLoadingMergedText] = React.useState(false);
+  const [sourceContent, setSourceContent] = React.useState<string>('');
+  const [targetContent, setTargetContent] = React.useState<string>('');
+  const [showEditor, setShowEditor] = React.useState(false);
+
+  // Memoize rows calculation
+  const rows = React.useMemo(() => {
+    if (!annotationData) return [];
+
+    // Create a reverse map: which alignment annotations map to each target annotation
+    const alignmentMap = new Map<string, number[]>();
+    for (let idx = 0; idx < annotationData.alignment_annotation.length; idx++) {
+      const alignment = annotationData.alignment_annotation[idx];
+      if (alignment?.aligned_segments) {
+        for (const targetId of alignment.aligned_segments) {
+          if (!alignmentMap.has(targetId)) {
+            alignmentMap.set(targetId, []);
+          }
+          alignmentMap.get(targetId)!.push(idx);
+        }
+      }
+    }
+
+    // Create a map to track which sources have been displayed
+    const displayedSources = new Set<number>();
+    
+    // Build rows based on alignment_annotation (targets) as primary driver
+    const rowsArray: Array<{
+      alignment: typeof annotationData.alignment_annotation[0];
+      alignmentIdx: number;
+      sources: Array<{ source: typeof annotationData.target_annotation[0]; sourceIdx: number }>;
+    }> = [];
+
+    // Iterate through alignment_annotation to create rows
+    for (let alignmentIdx = 0; alignmentIdx < annotationData.alignment_annotation.length; alignmentIdx++) {
+      const alignment = annotationData.alignment_annotation[alignmentIdx];
+      if (!alignment) continue;
+      
+      const alignedSources: Array<{ source: typeof annotationData.target_annotation[0]; sourceIdx: number }> = [];
+      
+      // Find which sources map to this alignment
+      if (alignment.aligned_segments && alignment.aligned_segments.length > 0) {
+        for (const sourceId of alignment.aligned_segments) {
+          const sourceIdx = annotationData.target_annotation.findIndex(t => t?.id === sourceId);
+          if (sourceIdx >= 0 && annotationData.target_annotation[sourceIdx]) {
+            alignedSources.push({
+              source: annotationData.target_annotation[sourceIdx]!,
+              sourceIdx
+            });
+            displayedSources.add(sourceIdx);
+          }
+        }
+      }
+      
+      rowsArray.push({
+        alignment,
+        alignmentIdx,
+        sources: alignedSources
+      });
+    }
+
+    // Add any remaining source segments that weren't mapped to any target
+    for (let sourceIdx = 0; sourceIdx < annotationData.target_annotation.length; sourceIdx++) {
+      const source = annotationData.target_annotation[sourceIdx];
+      if (!displayedSources.has(sourceIdx) && source && source.id !== null && source.id !== undefined) {
+        // Find if this source maps to any alignment
+        const mapsToAlignment = alignmentMap.has(source.id);
+        if (!mapsToAlignment) {
+          // Add as unmapped source row
+          rowsArray.push({
+            alignment: null,
+            alignmentIdx: -1,
+            sources: [{ source, sourceIdx }]
+          });
+        }
+      }
+    }
+
+    return rowsArray;
+  }, [annotationData]);
+
+  // Generate merged content from rows - each segment separated by newline
+  const generateMergedContent = React.useCallback(async () => {
+    if (!sourceInstanceId || !targetInstanceId || !annotationData || rows.length === 0) {
+      return;
+    }
+
+    setIsLoadingMergedText(true);
+    try {
+      // Fetch original instance data to get full text content
+      const [sourceInstanceData, targetInstanceData] = await Promise.all([
+        fetchInstance(sourceInstanceId),
+        fetchInstance(targetInstanceId)
+      ]);
+
+      const fullSourceContent = sourceInstanceData.content || '';
+      const fullTargetContent = targetInstanceData.content || '';
+      
+      // Build separate content: each row's segments on separate lines
+      const sourceLines: string[] = [];
+      const targetLines: string[] = [];
+
+      // Track positions to handle gaps and unaligned content
+      let sourceLastEnd = 0;
+      let targetLastEnd = 0;
+
+      for (const row of rows) {
+        const { alignment, sources } = row;
+        const hasAlignment = alignment && alignment.id !== null;
+        const hasSources = sources.length > 0;
+
+        // Handle gaps - process both source and target gaps, ensuring alignment
+        if (hasSources && sources[0]?.source && hasAlignment && alignment) {
+          // Both have content - handle gaps before both
+          const firstSource = sources[0].source;
+          const sourceGapStart = sourceLastEnd;
+          const sourceGapEnd = firstSource.span.start;
+          const targetGapStart = targetLastEnd;
+          const targetGapEnd = alignment.span.start;
+
+          // If both have gaps, add them separately to maintain alignment
+          if (sourceGapEnd > sourceGapStart) {
+            const gapText = fullSourceContent.substring(sourceGapStart, sourceGapEnd);
+            if (gapText.trim().length > 0 || gapText.length > 0) {
+              sourceLines.push(gapText);
+              targetLines.push(''); // Empty line to maintain alignment
+            }
+          }
+
+          if (targetGapEnd > targetGapStart) {
+            const gapText = fullTargetContent.substring(targetGapStart, targetGapEnd);
+            if (gapText.trim().length > 0 || gapText.length > 0) {
+              targetLines.push(gapText);
+              sourceLines.push(''); // Empty line to maintain alignment
+            }
+          }
+        } else if (hasSources && sources[0]?.source) {
+          // Only source has content - handle gap before source
+          const firstSource = sources[0].source;
+          if (firstSource.span.start > sourceLastEnd) {
+            const gapText = fullSourceContent.substring(sourceLastEnd, firstSource.span.start);
+            if (gapText.trim().length > 0 || gapText.length > 0) {
+              sourceLines.push(gapText);
+              targetLines.push(''); // Empty line to maintain alignment
+            }
+          }
+        } else if (hasAlignment && alignment) {
+          // Only target has content - handle gap before target
+          if (alignment.span.start > targetLastEnd) {
+            const gapText = fullTargetContent.substring(targetLastEnd, alignment.span.start);
+            if (gapText.trim().length > 0 || gapText.length > 0) {
+              targetLines.push(gapText);
+              sourceLines.push(''); // Empty line to maintain alignment
+            }
+          }
+        }
+
+        // Collect source segments for this row
+        const sourceSegments: string[] = [];
+        if (hasSources) {
+          for (const { source } of sources) {
+            if (source?.content) {
+              sourceSegments.push(source.content);
+            } else if (source) {
+              // Fallback to extracting from content if content field is not available
+              const segment = fullSourceContent.substring(source.span.start, source.span.end);
+              if (segment.trim().length > 0 || segment.length > 0) {
+                sourceSegments.push(segment);
+              }
+            }
+          }
+        }
+
+        // Collect target segment for this row
+        let targetSegment = '';
+        if (hasAlignment && alignment) {
+          if (alignment.content) {
+            targetSegment = alignment.content;
+          } else {
+            // Fallback to extracting from content if content field is not available
+            targetSegment = fullTargetContent.substring(alignment.span.start, alignment.span.end);
+          }
+        }
+
+        // Add source line
+        const sourceText = sourceSegments.join(' ');
+        if (sourceText.trim().length > 0 || sourceText.length > 0) {
+          sourceLines.push(sourceText);
+        } else {
+          sourceLines.push('');
+        }
+
+        // Add target line
+        if (targetSegment.trim().length > 0 || targetSegment.length > 0) {
+          targetLines.push(targetSegment);
+        } else {
+          targetLines.push('');
+        }
+
+        // Update last end positions
+        if (hasSources && sources.length > 0) {
+          const lastSource = sources[sources.length - 1]?.source;
+          if (lastSource) {
+            sourceLastEnd = Math.max(sourceLastEnd, lastSource.span.end);
+          }
+        }
+        if (hasAlignment && alignment) {
+          targetLastEnd = Math.max(targetLastEnd, alignment.span.end);
+        }
+      }
+
+      // Handle any remaining content after the last annotations
+      if (sourceLastEnd < fullSourceContent.length) {
+        const remainingText = fullSourceContent.substring(sourceLastEnd);
+        if (remainingText.trim().length > 0 || remainingText.length > 0) {
+          sourceLines.push(remainingText);
+          targetLines.push(''); // Empty line to maintain alignment
+        }
+      }
+
+      if (targetLastEnd < fullTargetContent.length) {
+        const remainingText = fullTargetContent.substring(targetLastEnd);
+        if (remainingText.trim().length > 0 || remainingText.length > 0) {
+          targetLines.push(remainingText);
+          sourceLines.push(''); // Empty line to maintain alignment
+        }
+      }
+
+      // Ensure both arrays have the same length
+      const maxLength = Math.max(sourceLines.length, targetLines.length);
+      while (sourceLines.length < maxLength) {
+        sourceLines.push('');
+      }
+      while (targetLines.length < maxLength) {
+        targetLines.push('');
+      }
+
+      setSourceContent(sourceLines.join('\n'));
+      setTargetContent(targetLines.join('\n'));
+      setShowEditor(true);
+    } catch (error) {
+      console.error('Error generating merged content:', error);
+    } finally {
+      setIsLoadingMergedText(false);
+    }
+  }, [rows, sourceInstanceId, targetInstanceId, annotationData]);
+
+  const handleOpenMergedText = async () => {
+    if (!sourceInstanceId || !targetInstanceId || !annotationData) {
+      console.error('Source or target instance ID is missing, or annotation data is not available');
+      return;
+    }
+
+    setIsLoadingMergedText(true);
+    try {
+      // Fetch original instance data to get full text content
+      const [sourceInstanceData, targetInstanceData] = await Promise.all([
+        fetchInstance(sourceInstanceId),
+        fetchInstance(targetInstanceId)
+      ]);
+
+      const sourceContent = sourceInstanceData.content || '';
+      const targetContent = targetInstanceData.content || '';
+      // Reconstruct aligned text from rows data
+      // Each row represents an alignment, and aligned segments should appear on the same line numbers
+      const alignedSourceLines: string[] = [];
+      const alignedTargetLines: string[] = [];
+
+      // Track positions to handle gaps
+      let sourceLastEnd = 0;
+      let targetLastEnd = 0;
+
+      // Process each row to build aligned text
+      for (const row of rows) {
+        const { alignment, sources } = row;
+        const hasAlignment = alignment && alignment.id !== null;
+        const hasSources = sources.length > 0;
+
+        if (hasSources && hasAlignment) {
+          // Both source and target exist - align them on the same line
+          
+          // Handle gaps before source segments
+          if (sources.length > 0 && sources[0]?.source) {
+            const firstSource = sources[0].source;
+            if (firstSource.span.start > sourceLastEnd) {
+              const gapText = sourceContent.substring(sourceLastEnd, firstSource.span.start);
+              if (gapText.trim().length > 0 || gapText.length > 0) {
+                alignedSourceLines.push(gapText);
+                alignedTargetLines.push(''); // Empty line to maintain alignment
+              }
+            }
+          }
+
+          // Handle gaps before target segment
+          if (alignment.span.start > targetLastEnd) {
+            const gapText = targetContent.substring(targetLastEnd, alignment.span.start);
+            if (gapText.trim().length > 0 || gapText.length > 0) {
+              alignedTargetLines.push(gapText);
+              alignedSourceLines.push(''); // Empty line to maintain alignment
+            }
+          }
+
+          // Combine all source segments for this row
+          const sourceSegments = sources
+            .map(({ source }) => {
+              if (!source) return '';
+              return sourceContent.substring(source.span.start, source.span.end);
+            })
+            .filter(seg => seg.length > 0);
+
+          // Get target segment
+          const targetSegment = targetContent.substring(alignment.span.start, alignment.span.end);
+
+          // Add aligned segments on the same line
+          if (sourceSegments.length > 0 || targetSegment.length > 0) {
+            alignedSourceLines.push(sourceSegments.join(' '));
+            alignedTargetLines.push(targetSegment);
+          }
+
+          // Update last end positions
+          const lastSource = sources.length > 0 ? sources.at(-1)?.source : null;
+          if (lastSource) {
+            sourceLastEnd = Math.max(sourceLastEnd, lastSource.span.end);
+          }
+          targetLastEnd = Math.max(targetLastEnd, alignment.span.end);
+
+        } else if (hasSources && !hasAlignment) {
+          // Only source exists - add source, empty target line
+          for (const { source } of sources) {
+            if (!source) continue;
+            
+            // Handle gap before source
+            if (source.span.start > sourceLastEnd) {
+              const gapText = sourceContent.substring(sourceLastEnd, source.span.start);
+              if (gapText.trim().length > 0 || gapText.length > 0) {
+                alignedSourceLines.push(gapText);
+                alignedTargetLines.push('');
+              }
+            }
+
+            const sourceSegment = sourceContent.substring(source.span.start, source.span.end);
+            if (sourceSegment.length > 0) {
+              alignedSourceLines.push(sourceSegment);
+              alignedTargetLines.push(''); // Empty target line
+            }
+            sourceLastEnd = Math.max(sourceLastEnd, source.span.end);
+          }
+        } else if (!hasSources && hasAlignment) {
+          // Only target exists - add target, empty source line
+          
+          // Handle gap before target
+          if (alignment.span.start > targetLastEnd) {
+            const gapText = targetContent.substring(targetLastEnd, alignment.span.start);
+            if (gapText.trim().length > 0 || gapText.length > 0) {
+              alignedTargetLines.push(gapText);
+              alignedSourceLines.push(''); // Empty source line
+            }
+          }
+
+          const targetSegment = targetContent.substring(alignment.span.start, alignment.span.end);
+          if (targetSegment.length > 0) {
+            alignedTargetLines.push(targetSegment);
+            alignedSourceLines.push(''); // Empty source line
+          }
+          targetLastEnd = Math.max(targetLastEnd, alignment.span.end);
+        }
+      }
+
+      // Handle any remaining content after the last annotations
+      if (sourceLastEnd < sourceContent.length) {
+        const remainingText = sourceContent.substring(sourceLastEnd);
+        if (remainingText.trim().length > 0 || remainingText.length > 0) {
+          alignedSourceLines.push(remainingText);
+          alignedTargetLines.push(''); // Empty target line to maintain alignment
+        }
+      }
+
+      if (targetLastEnd < targetContent.length) {
+        const remainingText = targetContent.substring(targetLastEnd);
+        if (remainingText.trim().length > 0 || remainingText.length > 0) {
+          alignedTargetLines.push(remainingText);
+          alignedSourceLines.push(''); // Empty source line to maintain alignment
+        }
+      }
+
+      // Ensure both arrays have the same length (pad with empty strings if needed)
+      const maxLength = Math.max(alignedSourceLines.length, alignedTargetLines.length);
+      while (alignedSourceLines.length < maxLength) {
+        alignedSourceLines.push('');
+      }
+      while (alignedTargetLines.length < maxLength) {
+        alignedTargetLines.push('');
+      }
+
+      // Join lines with newlines to create the final text
+      const alignedSourceText = alignedSourceLines.join('\n');
+      const alignedTargetText = alignedTargetLines.join('\n');
+
+      // Set the aligned text in both editors
+      setSourceText(
+        sourceTextId || sourceInstanceData.id || 'source-instance',
+        sourceInstanceId,
+        alignedSourceText,
+        'database'
+      );
+
+      setTargetText(
+        `related-${targetInstanceId}`,
+        targetInstanceId,
+        alignedTargetText,
+        'database'
+      );
+    } catch (error) {
+      console.error('Error loading merged text:', error);
+    } finally {
+      setIsLoadingMergedText(false);
+    }
+  };
+
+  // Generate merged content on mount or when rows change
+  React.useEffect(() => {
+    if (rows.length > 0 && sourceInstanceId && targetInstanceId) {
+      generateMergedContent();
+    }
+  }, [rows.length, sourceInstanceId, targetInstanceId, generateMergedContent]);
 
   if (!annotationData) {
     return (
@@ -12,252 +448,263 @@ const AlignmentMappingView: React.FC = () => {
     );
   }
 
-  // Create a map of target annotations by ID for quick lookup
-  const targetMap = new Map<string, {
-    id?: string | null;
-    span: { start: number; end: number };
-    content?: string;
-  }>();
-  
-  annotationData.target_annotation.forEach((target) => {
-    if (target && target.id) {
-      targetMap.set(target.id, target);
-    }
-  });
-
-  // Create a reverse map: which alignment annotations map to each target annotation
-  const alignmentMap = new Map<string, number[]>();
-  annotationData.alignment_annotation.forEach((alignment, idx) => {
-    if (alignment && alignment.aligned_segments) {
-      alignment.aligned_segments.forEach((targetId) => {
-        if (!alignmentMap.has(targetId)) {
-          alignmentMap.set(targetId, []);
-        }
-        alignmentMap.get(targetId)!.push(idx);
-      });
-    }
-  });
-
-  // Create a map to track which sources have been displayed
-  const displayedSources = new Set<number>();
-  
-  // Build rows based on alignment_annotation (targets) as primary driver
-  const rows: Array<{
-    alignment: typeof annotationData.alignment_annotation[0];
-    alignmentIdx: number;
-    sources: Array<{ source: typeof annotationData.target_annotation[0]; sourceIdx: number }>;
-  }> = [];
-
-  // Iterate through alignment_annotation to create rows
-  annotationData.alignment_annotation.forEach((alignment, alignmentIdx) => {
-    if (!alignment) return;
-    
-    const alignedSources: Array<{ source: typeof annotationData.target_annotation[0]; sourceIdx: number }> = [];
-    
-    // Find which sources map to this alignment
-    if (alignment.aligned_segments && alignment.aligned_segments.length > 0) {
-      alignment.aligned_segments.forEach((sourceId) => {
-        const sourceIdx = annotationData.target_annotation.findIndex(t => t?.id === sourceId);
-        if (sourceIdx >= 0 && annotationData.target_annotation[sourceIdx]) {
-          alignedSources.push({
-            source: annotationData.target_annotation[sourceIdx]!,
-            sourceIdx
-          });
-          displayedSources.add(sourceIdx);
-        }
-      });
-    }
-    
-    rows.push({
-      alignment,
-      alignmentIdx,
-      sources: alignedSources
-    });
-  });
-
-  // Add any remaining source segments that weren't mapped to any target
-  annotationData.target_annotation.forEach((source, sourceIdx) => {
-    if (!displayedSources.has(sourceIdx) && source && source.id !== null) {
-      // Find if this source maps to any alignment
-      const mapsToAlignment = alignmentMap.has(source.id);
-      if (!mapsToAlignment) {
-        // Add as unmapped source row
-        rows.push({
-          alignment: null,
-          alignmentIdx: -1,
-          sources: [{ source, sourceIdx }]
-        });
-      }
-    }
-  });
-
   return (
-    <div className=" flex flex-col min-h-0 h-[80vh] pb-[20px]">
+    <div className="flex flex-col min-h-0 h-[80vh] pb-[20px]">
       {/* Headers */}
-      <div className="grid grid-cols-2 gap-4 p-4 border-b border-gray-200 bg-gray-50 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-          <h3 className="text-sm font-semibold text-gray-700">Source Text</h3>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <h3 className="text-sm font-semibold text-gray-700">Merged Alignment View</h3>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-          <h3 className="text-sm font-semibold text-gray-700">Target Text</h3>
+          <button
+            onClick={() => setShowEditor(!showEditor)}
+            className="px-3 py-1.5 text-xs font-medium text-white bg-gray-600 rounded hover:bg-gray-700 transition-colors"
+          >
+            {showEditor ? 'Show Blocks' : 'Show Editor'}
+          </button>
+          <button
+            onClick={generateMergedContent}
+            disabled={isLoadingMergedText || !sourceInstanceId || !targetInstanceId}
+            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            {isLoadingMergedText ? (
+              <>
+                <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading...
+              </>
+            ) : (
+              'Refresh Merged Content'
+            )}
+          </button>
+          <button
+            onClick={handleOpenMergedText}
+            disabled={isLoadingMergedText || !sourceInstanceId || !targetInstanceId}
+            className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            Open Merged Text
+          </button>
         </div>
       </div>
 
-      {/* Side by side mappings */}
-      <div className="flex-1 min-h-0 overflow-y-auto  overscroll-contain">
-        <div className="p-4 space-y-3 ">
-          {rows.map((row, rowIdx) => {
-            const { alignment, alignmentIdx, sources } = row;
-            
-            const isAlignmentGap = alignment && alignment.id === null;
-            const hasAlignment = alignment && alignment.id !== null;
-            
-            // Get aligned segments for this alignment
-            const alignedTargets = alignment?.aligned_segments
-              ?.map((targetId) => targetMap.get(targetId))
-              .filter(Boolean) || [];
-
-            return (
-              <div key={rowIdx} className="grid grid-cols-2 gap-4">
-                {/* Source Column */}
-                <div className={`border rounded-lg p-3 flex flex-col ${
-                  sources.length > 0
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-gray-50 border-gray-200'
-                }`}>
-                  {sources.length > 0 ? (
-                    <>
-                      {sources.map(({ source, sourceIdx }, sourceItemIdx) => (
-                        <div key={sourceItemIdx} className={sourceItemIdx > 0 ? 'mt-3 pt-3 border-t border-green-300' : ''}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-semibold text-gray-600">
-                              Source {sourceIdx + 1}
-                            </span>
-                            {source.id && (
-                              <span className="text-xs px-2 py-0.5 bg-green-200 text-gray-700 rounded">
-                                {source.id.substring(0, 8)}...
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-800 mb-2">
-                            {source.content || '(no content)'}
-                          </div>
-                          <div className="text-xs text-gray-500 mb-2">
-                            Span: [{source.span.start}-{source.span.end}]
-                          </div>
-                        </div>
-                      ))}
-                      {/* Mapped to section - aligned at bottom */}
-                      <div className="mt-auto pt-2 border-t border-green-300">
-                        {hasAlignment ? (
-                          <>
-                            <div className="text-xs text-gray-600 font-semibold mb-1">
-                              Mapped to:
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              → Target {alignmentIdx + 1}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-xs text-gray-400 italic">No mapping</div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col h-full min-h-[100px]">
-                      <div className="flex-1 flex items-center justify-center">
-                        <div className="text-xs text-gray-400 italic">No source segment</div>
-                      </div>
-                      {/* Empty mapping section at bottom to align with target */}
-                      <div className="mt-auto pt-2 border-t border-gray-300">
-                        <div className="text-xs text-gray-400 italic">No mapping</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Target Column */}
-                <div className={`border rounded-lg p-3 flex flex-col ${
-                  hasAlignment
-                    ? 'bg-blue-50 border-blue-200'
-                    : isAlignmentGap
-                    ? 'bg-gray-50 border-gray-300'
-                    : 'bg-gray-50 border-gray-200'
-                }`}>
-                  {hasAlignment ? (
-                    <>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-600">
-                          Target {alignmentIdx + 1}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 bg-blue-200 text-gray-700 rounded">
-                          {alignment.id?.substring(0, 8)}...
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-800 mb-2">
-                        {alignment.content || '(no content)'}
-                      </div>
-                      <div className="text-xs text-gray-500 mb-2">
-                        Span: [{alignment.span.start}-{alignment.span.end}]
-                      </div>
-                      {/* Mapped from section - aligned at bottom */}
-                      <div className="mt-auto pt-2 border-t border-blue-300">
-                        {sources.length > 0 ? (
-                          <>
-                            <div className="text-xs text-gray-600 font-semibold mb-1">
-                              Mapped from:
-                            </div>
-                            {sources.map(({ sourceIdx }) => (
-                              <div key={sourceIdx} className="text-xs text-gray-600">
-                                ← Source {sourceIdx + 1}
-                              </div>
-                            ))}
-                          </>
-                        ) : (
-                          <div className="text-xs text-gray-400 italic">No mapping</div>
-                        )}
-                      </div>
-                    </>
-                  ) : isAlignmentGap ? (
-                    <>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-600">
-                          Target {alignmentIdx + 1}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 bg-gray-300 text-gray-700 rounded">
-                          Gap
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-2">
-                        {alignment.content || '(gap content)'}
-                      </div>
-                      <div className="text-xs text-gray-500 mb-2">
-                        Span: [{alignment.span.start}-{alignment.span.end}]
-                      </div>
-                      {/* Empty mapping section at bottom to align with source */}
-                      <div className="mt-auto pt-2 border-t border-gray-300">
-                        <div className="text-xs text-gray-400 italic">No source mapping</div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col h-full min-h-[100px]">
-                      <div className="flex-1 flex items-center justify-center">
-                        <div className="text-xs text-gray-400 italic">No target segment</div>
-                      </div>
-                      {/* Empty mapping section at bottom to align with source */}
-                      <div className="mt-auto pt-2 border-t border-gray-300">
-                        <div className="text-xs text-gray-400 italic">No mapping</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+      {/* Content: Editor or Blocks */}
+      {showEditor ? (
+        <div className="flex-1 min-h-0 overflow-hidden flex gap-2">
+          {/* Source Editor */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="px-4 py-2 bg-green-50 border-b border-green-200 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <h3 className="text-sm font-semibold text-gray-700">Source Text</h3>
               </div>
-            );
-          })}
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <CodeMirror
+                value={sourceContent}
+                height="100%"
+                width="100%"
+                className="font-['monlam'] h-full"
+                editable={false}
+                basicSetup={{
+                  lineNumbers: true,
+                  foldGutter: true,
+                  dropCursor: false,
+                  allowMultipleSelections: false,
+                  highlightSelectionMatches: false,
+                }}
+                extensions={[
+                  EditorView.lineWrapping,
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Target Editor */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <h3 className="text-sm font-semibold text-gray-700">Target Text</h3>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <CodeMirror
+                value={targetContent}
+                height="100%"
+                width="100%"
+                className="font-['monlam'] h-full"
+                editable={false}
+                basicSetup={{
+                  lineNumbers: true,
+                  foldGutter: true,
+                  dropCursor: false,
+                  allowMultipleSelections: false,
+                  highlightSelectionMatches: false,
+                }}
+                extensions={[
+                  EditorView.lineWrapping,
+                ]}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          <div className="p-4 space-y-3">
+            {rows.map((row, rowIdx) => {
+              const { alignment, alignmentIdx, sources } = row;
+              
+              const isAlignmentGap = alignment && alignment.id === null;
+              const hasAlignment = alignment && alignment.id !== null;
+
+              return (
+                <div key={rowIdx} className="grid grid-cols-2 gap-4">
+                  {/* Source Column */}
+                  <div className={`border rounded-lg p-3 flex flex-col ${
+                    sources.length > 0
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    {sources.length > 0 ? (
+                      <>
+                        {sources.map(({ source, sourceIdx }, sourceItemIdx) => {
+                          if (!source) return null;
+                          return (
+                            <div key={`${sourceIdx}-${sourceItemIdx}`} className={sourceItemIdx > 0 ? 'mt-3 pt-3 border-t border-green-300' : ''}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-semibold text-gray-600">
+                                  Source {sourceIdx + 1}
+                                </span>
+                                {source.id && (
+                                  <span className="text-xs px-2 py-0.5 bg-green-200 text-gray-700 rounded">
+                                    {source.id.substring(0, 8)}...
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-800 mb-2">
+                                {source.content || '(no content)'}
+                              </div>
+                              <div className="text-xs text-gray-500 mb-2">
+                                Span: [{source.span.start}-{source.span.end}]
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* Mapped to section - aligned at bottom */}
+                        <div className="mt-auto pt-2 border-t border-green-300">
+                          {hasAlignment ? (
+                            <>
+                              <div className="text-xs text-gray-600 font-semibold mb-1">
+                                Mapped to:
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                → Target {alignmentIdx + 1}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-xs text-gray-400 italic">No mapping</div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col h-full min-h-[100px]">
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="text-xs text-gray-400 italic">No source segment</div>
+                        </div>
+                        {/* Empty mapping section at bottom to align with target */}
+                        <div className="mt-auto pt-2 border-t border-gray-300">
+                          <div className="text-xs text-gray-400 italic">No mapping</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Target Column */}
+                  <div className={`border rounded-lg p-3 flex flex-col ${
+                    hasAlignment
+                      ? 'bg-blue-50 border-blue-200'
+                      : isAlignmentGap
+                      ? 'bg-gray-50 border-gray-300'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    {hasAlignment ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-semibold text-gray-600">
+                            Target {alignmentIdx + 1}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 bg-blue-200 text-gray-700 rounded">
+                            {alignment.id?.substring(0, 8)}...
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-800 mb-2">
+                          {alignment.content || '(no content)'}
+                        </div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          Span: [{alignment.span.start}-{alignment.span.end}]
+                        </div>
+                        {/* Mapped from section - aligned at bottom */}
+                        <div className="mt-auto pt-2 border-t border-blue-300">
+                          {sources.length > 0 ? (
+                            <>
+                              <div className="text-xs text-gray-600 font-semibold mb-1">
+                                Mapped from:
+                              </div>
+                              {sources.map(({ sourceIdx }, idx) => (
+                                <div key={`source-${sourceIdx}-${idx}`} className="text-xs text-gray-600">
+                                  ← Source {sourceIdx + 1}
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <div className="text-xs text-gray-400 italic">No mapping</div>
+                          )}
+                        </div>
+                      </>
+                    ) : isAlignmentGap ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-semibold text-gray-600">
+                            Target {alignmentIdx + 1}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 bg-gray-300 text-gray-700 rounded">
+                            Gap
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 mb-2">
+                          {alignment.content || '(gap content)'}
+                        </div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          Span: [{alignment.span.start}-{alignment.span.end}]
+                        </div>
+                        {/* Empty mapping section at bottom to align with source */}
+                        <div className="mt-auto pt-2 border-t border-gray-300">
+                          <div className="text-xs text-gray-400 italic">No source mapping</div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col h-full min-h-[100px]">
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="text-xs text-gray-400 italic">No target segment</div>
+                        </div>
+                        {/* Empty mapping section at bottom to align with source */}
+                        <div className="mt-auto pt-2 border-t border-gray-300">
+                          <div className="text-xs text-gray-400 italic">No mapping</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

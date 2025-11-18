@@ -27,7 +27,20 @@ function TextEditor({
   fontSize
 }: TextEditorProps) {
   // Editor context for scroll synchronization
-  const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing, setOriginalSourceText, setOriginalTargetText } = useEditorContext();
+  const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing, setOriginalSourceText, setOriginalTargetText, sourceEditorRef, targetEditorRef } = useEditorContext();
+  
+  // Combined ref callback to update both prop ref and context refs
+  const combinedRef = React.useCallback((editorRef: ReactCodeMirrorRef | null) => {
+    // Update the prop ref if provided
+    if (ref) {
+      (ref as React.MutableRefObject<ReactCodeMirrorRef | null>).current = editorRef;
+    }
+    // Update the context ref based on editor type
+    const contextRef = editorType === 'source' ? sourceEditorRef : targetEditorRef;
+    if (contextRef) {
+      contextRef.current = editorRef;
+    }
+  }, [ref, editorType, sourceEditorRef, targetEditorRef]);
   
   // Zustand store
   const {
@@ -92,6 +105,16 @@ function TextEditor({
       onSelectionChange.onSelectionClear(editorId);
     }
   }, [currentText, editorId, onSelectionChange, shouldShowPlaceholder, isLoadingAnnotations, editorType, setOriginalSourceText, setOriginalTargetText]);
+  
+  // Sync refs when editor mounts or when content loads
+  React.useEffect(() => {
+    if (ref?.current) {
+      const contextRef = editorType === 'source' ? sourceEditorRef : targetEditorRef;
+      if (contextRef) {
+        contextRef.current = ref.current;
+      }
+    }
+  }, [ref, editorType, sourceEditorRef, targetEditorRef, isSourceLoaded, isTargetLoaded, value]);
   
   const onChange = React.useCallback((val: string) => {
     
@@ -540,7 +563,7 @@ function TextEditor({
           height="100%"
           width="100%"
           className="font-['monlam'] h-[78vh]  "
-          ref={ref}
+          ref={combinedRef}
           onChange={onChange}  
           editable={isFullyEditable || isEditable}
           onKeyDown={handleKeyDown}
