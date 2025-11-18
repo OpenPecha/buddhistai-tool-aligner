@@ -55,7 +55,7 @@ function LanguageSelector() {
                       : 'text-gray-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between font-['noto']">
                     <span>{lang.nativeName}</span>
                     <span className="text-xs text-gray-500">{lang.name}</span>
                   </div>
