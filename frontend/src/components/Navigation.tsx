@@ -2,13 +2,14 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import LanguageSelector from './LanguageSelector';
+import { useTextSelectionStore } from '../stores/textSelectionStore';
 
 function Navigation() {
   const { user, logout, isAuthenticated } = useAuth0();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
+  const { resetAllSelections,clearAllSelections } = useTextSelectionStore();
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -64,6 +65,20 @@ function Navigation() {
                 Home
               </Link>
               <Link
+                to="/aligner"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive('/aligner')
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+                onClick={() => {
+                  resetAllSelections();
+                  clearAllSelections();
+                }}
+              >
+                Aligner
+              </Link>
+              <Link
                 to="/formatter"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive('/formatter')
@@ -73,16 +88,7 @@ function Navigation() {
               >
                 Formatter
               </Link>
-              <Link
-                to="/aligner"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/aligner')
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                Aligner
-              </Link>
+             
             </div>
           </div>
 

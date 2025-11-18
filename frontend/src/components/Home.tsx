@@ -42,9 +42,6 @@ function Home() {
           />
         </div>
 
-        <div className="text-center mt-12">
-          <p className="text-sm text-gray-500">{t("home.footer")}</p>
-        </div>
       </div>
     </div>
   );
