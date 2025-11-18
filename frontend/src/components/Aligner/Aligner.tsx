@@ -142,9 +142,11 @@ function AlignerContent() {
       )}
     
       {/* Footer */}
+      {bothTextLoaded && showEditors &&
       <div className='absolute bottom-0 left-0 right-0 h-8 shrink-0 bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
       <span>Only Enter and Backspace keys are available for editing</span> 
       </div>
+      }
     </div>
   );
 }
