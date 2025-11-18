@@ -139,7 +139,6 @@ function UnifiedSelectionPanel() {
 
   // Handle local text selection - use text ID directly without fetching
   const handleLocalTextSelect = useCallback((text: TextTitleSearchResult) => {
-    console.log("handleLocalTextSelect", text);
     setSelectedTextId(text.text_id);
     setSelectedLocalTextTitle(text.title);
     setSelectedInstanceId(null);
