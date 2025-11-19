@@ -159,8 +159,30 @@ function UnifiedSelectionPanel() {
       if (!instanceId || !selectedTextId) return;
       setSelectedInstanceId(instanceId);
     },
-    [selectedTextId]
+    [selectedTextId, setSearchParams]
   );
+
+  // Auto-select first instance when instances are loaded after text selection
+  React.useEffect(() => {
+    if (
+      selectedTextId &&
+      !isLoadingInstances &&
+      availableInstances.length > 0 &&
+      !selectedInstanceId
+    ) {
+      // Automatically select the first instance
+      const firstInstance = availableInstances[0];
+      if (firstInstance?.id) {
+        handleInstanceSelection(firstInstance.id);
+      }
+    }
+  }, [
+    selectedTextId,
+    isLoadingInstances,
+    availableInstances,
+    selectedInstanceId,
+    handleInstanceSelection,
+  ]);
 
   // Handle action selection
   const handleActionSelection = React.useCallback(

@@ -219,8 +219,15 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
       
       if (!clickedEditor?.view || !otherEditor?.view) return;
       
+      // Calculate the top offset of the clicked line relative to the scroll container
+      const clickedCoords = clickedEditor.view.coordsAtPos(clickPosition);
+      if (!clickedCoords) return;
+      
+      const clickedScrollRect = clickedEditor.view.scrollDOM.getBoundingClientRect();
+      const clickedTopOffset = clickedCoords.top - clickedScrollRect.top;
+      
       // Try to use external alignment data first, then internal mappings, then fallback to line-based sync
-      let targetPosition = null;
+      let targetPosition: number | null = null;
       
       // Priority 1: Use external alignment data if available
       if (externalAlignmentData?.data) {
@@ -260,23 +267,41 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         }
         
         if (targetPosition !== null) {
-          // Scroll to the aligned segment
-          const scrollEffect = EditorView.scrollIntoView(targetPosition, {
-            y: 'center', // Center the segment in viewport for better visibility
-            yMargin: 50
-          });
-          
           // Temporarily disable scroll sync to prevent feedback loop
           isScrollSyncing.current = true;
           
+          // Capture targetPosition in a const for the setTimeout callback
+          const finalTargetPosition = targetPosition;
+          
+          // First, ensure the target line is visible to get accurate coordinates
+          const scrollEffect = EditorView.scrollIntoView(finalTargetPosition, {
+            y: 'start',
+            yMargin: 0
+          });
           otherEditor.view.dispatch({
             effects: [scrollEffect]
           });
           
-          // Reset the sync flag after a short delay
+          // Wait for scroll to complete, then adjust to match exact offset
           setTimeout(() => {
-            isScrollSyncing.current = false;
-          }, 100);
+            if (!otherEditor?.view) {
+              isScrollSyncing.current = false;
+              return;
+            }
+            const targetCoords = otherEditor.view.coordsAtPos(finalTargetPosition);
+            if (targetCoords) {
+              const otherScrollRect = otherEditor.view.scrollDOM.getBoundingClientRect();
+              const currentTargetOffset = targetCoords.top - otherScrollRect.top;
+              const offsetDifference = currentTargetOffset - clickedTopOffset;
+              const newScrollTop = otherEditor.view.scrollDOM.scrollTop + offsetDifference;
+              otherEditor.view.scrollDOM.scrollTop = Math.max(0, newScrollTop);
+            }
+            
+            // Reset the sync flag after adjustment
+            setTimeout(() => {
+              isScrollSyncing.current = false;
+            }, 50);
+          }, 50);
           
           return; // Successfully used external alignment data
         }
@@ -314,23 +339,41 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         }
         
         if (targetPosition !== null) {
-          // Scroll to the aligned segment
-          const scrollEffect = EditorView.scrollIntoView(targetPosition, {
-            y: 'center', // Center the segment in viewport for better visibility
-            yMargin: 50
-          });
-          
           // Temporarily disable scroll sync to prevent feedback loop
           isScrollSyncing.current = true;
           
+          // Capture targetPosition in a const for the setTimeout callback
+          const finalTargetPosition = targetPosition;
+          
+          // First, ensure the target line is visible to get accurate coordinates
+          const scrollEffect = EditorView.scrollIntoView(finalTargetPosition, {
+            y: 'start',
+            yMargin: 0
+          });
           otherEditor.view.dispatch({
             effects: [scrollEffect]
           });
           
-          // Reset the sync flag after a short delay
+          // Wait for scroll to complete, then adjust to match exact offset
           setTimeout(() => {
-            isScrollSyncing.current = false;
-          }, 100);
+            if (!otherEditor?.view) {
+              isScrollSyncing.current = false;
+              return;
+            }
+            const targetCoords = otherEditor.view.coordsAtPos(finalTargetPosition);
+            if (targetCoords) {
+              const otherScrollRect = otherEditor.view.scrollDOM.getBoundingClientRect();
+              const currentTargetOffset = targetCoords.top - otherScrollRect.top;
+              const offsetDifference = currentTargetOffset - clickedTopOffset;
+              const newScrollTop = otherEditor.view.scrollDOM.scrollTop + offsetDifference;
+              otherEditor.view.scrollDOM.scrollTop = Math.max(0, newScrollTop);
+            }
+            
+            // Reset the sync flag after adjustment
+            setTimeout(() => {
+              isScrollSyncing.current = false;
+            }, 50);
+          }, 50);
           
           return; // Successfully used alignment mapping
         }
@@ -352,23 +395,38 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         // Get the position of the target line
         const targetLinePos = targetDoc.line(targetLineNumber).from;
         
-        // Scroll the other editor to the corresponding line
-        const scrollEffect = EditorView.scrollIntoView(targetLinePos, {
-          y: 'center', // Align to top of viewport
-          yMargin: 0
-        });
-        
         // Temporarily disable scroll sync to prevent feedback loop
         isScrollSyncing.current = true;
         
+        // First, ensure the target line is visible to get accurate coordinates
+        const scrollEffect = EditorView.scrollIntoView(targetLinePos, {
+          y: 'start',
+          yMargin: 0
+        });
         otherEditor.view.dispatch({
           effects: [scrollEffect]
         });
         
-        // Reset the sync flag after a short delay
+        // Wait for scroll to complete, then adjust to match exact offset
         setTimeout(() => {
-          isScrollSyncing.current = false;
-        }, 100);
+          if (!otherEditor?.view) {
+            isScrollSyncing.current = false;
+            return;
+          }
+          const targetCoords = otherEditor.view.coordsAtPos(targetLinePos);
+          if (targetCoords) {
+            const otherScrollRect = otherEditor.view.scrollDOM.getBoundingClientRect();
+            const currentTargetOffset = targetCoords.top - otherScrollRect.top;
+            const offsetDifference = currentTargetOffset - clickedTopOffset;
+            const newScrollTop = otherEditor.view.scrollDOM.scrollTop + offsetDifference;
+            otherEditor.view.scrollDOM.scrollTop = Math.max(0, newScrollTop);
+          }
+          
+          // Reset the sync flag after adjustment
+          setTimeout(() => {
+            isScrollSyncing.current = false;
+          }, 50);
+        }, 50);
         
       }
     } catch (error) {

@@ -291,7 +291,7 @@ const MappingSidebar = () => {
           ) }
           <button
             onClick={handleSave}
-            className='w-full bg-blue-600 text-white font-poppins px-2 py-2 rounded-md'
+            className='w-full bg-blue-600 text-white font-poppins px-2 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed'
             disabled={createAnnotationMutation.isPending || updateAnnotationMutation.isPending}
           >
             {(() => {
@@ -326,7 +326,7 @@ const MappingSidebar = () => {
               {/* Modal Header */}
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 id="confirm-modal-title" className="text-lg font-semibold text-gray-900">
-                  {hasAlignment ? t('mapping.confirmUpdate') || 'Confirm Update' : t('mapping.confirmSave') || 'Confirm Save'}
+                  {hasAlignment ? 'Confirm Save' : 'Confirm Publish'}
                 </h3>
               </div>
 

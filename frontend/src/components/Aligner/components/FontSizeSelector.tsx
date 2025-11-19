@@ -19,6 +19,7 @@ function FontSizeSelector({
           onChange={(e) => onFontSizeChange(parseInt(e.target.value))}
           className="text-xs leading-0 font-medium transition-colors text-gray-700 hover:bg-gray-100"
         >
+          <option value="">default</option>
           {availableSizes.map((size) => (
             <option key={size} value={size}>{size}</option>
           ))}

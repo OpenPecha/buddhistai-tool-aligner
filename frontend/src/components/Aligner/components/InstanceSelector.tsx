@@ -31,34 +31,7 @@ export function InstanceSelector({
     return null;
   }
 
-  const getInstanceTitle = (instance: Instance): string => {
-    // Handle string | null type from OpenPechaTextInstance
-    if (typeof instance?.incipit_title === 'string' && instance.incipit_title) {
-      return instance.incipit_title;
-    }
-    
-    // Handle Record<string, string> type (for compatibility)
-    if (instance?.incipit_title && typeof instance.incipit_title === 'object') {
-      const firstKey = Object.keys(instance.incipit_title)[0];
-      if (firstKey) {
-        return instance.incipit_title[firstKey];
-      }
-    }
-    
-    // Handle alt_incipit_titles
-    if (typeof instance?.alt_incipit_titles === 'string' && instance.alt_incipit_titles) {
-      return instance.alt_incipit_titles;
-    }
-    
-    if (instance?.alt_incipit_titles && typeof instance.alt_incipit_titles === 'object') {
-      const firstKey = Object.keys(instance.alt_incipit_titles)[0];
-      if (firstKey) {
-        return instance.alt_incipit_titles[firstKey];
-      }
-    }
-    
-    return `Instance ${instance.id}`;
-  };
+  
 
   return (
       <div className="space-y-4">
@@ -81,11 +54,10 @@ export function InstanceSelector({
               </option>
               {availableInstances.map((instance) => {
                 if (!instance) return null;
-                const title = getInstanceTitle(instance);
 
                 return (
                   <option key={instance.id} value={instance.id}>
-                    {instance.type || 'Instance'} - {title}
+                    {instance.type || 'Instance'} - Version
                   </option>
                 );
               })}

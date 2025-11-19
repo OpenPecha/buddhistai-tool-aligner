@@ -40,11 +40,7 @@ export function SelectedTextDisplay({
                 BDRC ID: {selectedBdrcResult.workId}
               </p>
             )}
-            {textId && (
-              <p className="text-xs text-gray-500">
-                Text ID: {textId}
-              </p>
-            )}
+            
           </div>
         </div>
         <button

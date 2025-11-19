@@ -230,29 +230,7 @@ function TextEditor({
     }
   }, [isEditable, isFullyEditable]);
 
-  // Handle scroll synchronization with throttling
-  const lastScrollLineRef = React.useRef<number>(0);
-  const handleScroll = React.useCallback((view: EditorView) => {
-    if (isScrollSyncing.current) return; // Don't sync if we're already syncing
-    
-    try {
-      // Get the current viewport
-      const viewport = view.viewport;
-      const doc = view.state.doc;
-      
-      // Find the line number at the top of the viewport
-      const topLine = doc.lineAt(viewport.from);
-      const lineNumber = topLine.number;
-      // Only sync if the line number has changed significantly (avoid micro-scrolls)
-      if (Math.abs(lineNumber - lastScrollLineRef.current) >= 1) {
-        lastScrollLineRef.current = lineNumber;
-        // Sync the other editor to this line
-        syncScrollToLine(editorType, lineNumber);
-      }
-    } catch (error) {
-      console.error('Error handling scroll:', error);
-    }
-  }, [editorType, syncScrollToLine, isScrollSyncing]);
+
 
   // Handle click synchronization
   const handleClick = React.useCallback((view: EditorView, event: MouseEvent) => {
@@ -379,14 +357,7 @@ function TextEditor({
   }, [isFullyEditable, editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile]);
 
   // Create scroll synchronization extension
-  const scrollSyncExtension = React.useMemo(() => {
-    return EditorView.updateListener.of((update) => {
-      // Only handle scroll events, not other updates
-      if (update.geometryChanged || update.viewportChanged) {
-        handleScroll(update.view);
-      }
-    });
-  }, [handleScroll]);
+
 
   // Create click synchronization extension
   const clickSyncExtension = React.useMemo(() => {
@@ -590,8 +561,6 @@ function TextEditor({
             blockDeletionExtension,
             // Prevent text input except newlines
             preventTextInputExtension,
-            // Scroll synchronization
-            scrollSyncExtension,
             // Click synchronization
             clickSyncExtension,
             // Line number click synchronization

@@ -111,11 +111,11 @@ export function RelatedInstancesPanel({
             Select a related translation or commentary to align with, or create a new one:
           </p>
         </div>
-        <div className="flex gap-2 ml-4">
+        <div className="flex flex-col gap-2 ml-4">
           {/* Create Translation Button */}
           <button
             onClick={onCreateTranslation}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 font-poppins text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
@@ -127,7 +127,7 @@ export function RelatedInstancesPanel({
           {/* Create Commentary Button */}
           <button
             onClick={onCreateCommentary}
-            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-green-600 font-poppins text-white  text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -224,7 +224,7 @@ return (
           <button
             key={instanceId}
             onClick={handleClick}
-            className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-md relative ${
+            className={`p-4 border-2 cursor-pointer rounded-lg text-left transition-all hover:shadow-md relative ${
               isSelected
                 ? 'border-blue-500 bg-blue-50 shadow-sm'
                 : 'border-gray-200 bg-white hover:border-gray-300'

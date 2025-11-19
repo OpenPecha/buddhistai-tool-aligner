@@ -224,12 +224,13 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     setProcessingError(null);
   }, [handleResetBdrcSelectionBase]);
 
-  // Handle creating text from BDRC
-  const handleCreateTextFromBdrc = useCallback(() => {
+
+  const handleCreateTextFromBdrc = React.useCallback(() => {
     if (!selectedBdrcResult?.workId) return;
-    const url = `${CATALOGER_URL}/create?t_id=${selectedBdrcResult.workId}`;
-    window.open(url, '_blank');
+    const url = `${CATALOGER_URL}/create?w_id=${selectedBdrcResult.workId}&i_id=${selectedBdrcResult.instanceId}`;
+    window.open(url, "_blank");
   }, [selectedBdrcResult]);
+
 
   const handleTextSelect = (textId: string, textTitle?: string) => {
     setSelectedTextId(textId);
