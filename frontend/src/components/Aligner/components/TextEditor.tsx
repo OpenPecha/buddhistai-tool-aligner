@@ -147,7 +147,7 @@ function TextEditor({
     
     // Only newlines were added/removed - allow the change
     setValue(val);
-  }, [editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile, shouldShowPlaceholder, isFullyEditable]);
+  }, []);
 
   // Handle text selection
   const handleSelectionChange = React.useCallback((selection: EditorSelection) => {
@@ -279,10 +279,9 @@ function TextEditor({
         // Merge: previous line + current line (without the newline between them)
         const previousLineText = previousLine.text;
         const currentLineText = currentLine.text;
-        
         // Determine if we need to add a space between the lines
         const needsSpace = previousLineText.trim() && currentLineText.trim();
-        const spaceText = needsSpace ? ' ' : '';
+        const spaceText = needsSpace ? '' : '';
         
         // Create the merged text - add a space if both lines have content
         const mergedText = previousLineText + spaceText + currentLineText;
@@ -424,6 +423,8 @@ function TextEditor({
       // If content (without newlines) changed, revert the change
       if (originalContent !== newContent) {
         // Use setTimeout to avoid dispatch during update
+        alert("you cannot apply segment before a space text will get reset to original text");
+        
         setTimeout(() => {
           update.view.dispatch({
             changes: {
@@ -517,12 +518,12 @@ function TextEditor({
   }
 
   return (
-    <div className="box-border relative w-full h-full" 
+    <div className="box-border relative w-full h-full group" 
     style={{ fontSize: `${fontSize}px` } as React.CSSProperties}
     >
         <button
-      className='absolute top-2 right-2 z-10 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1'
-      onClick={() => handleLoadSampleText()}>Load Sample Text</button>
+      className='absolute top-2 right-2 z-10 font-poppins cursor-pointer  px-3 py-1 bg-blue-300 transition-all text-white text-xs rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'
+      onClick={() => handleLoadSampleText()}>Transfer segmentation</button>
         <CodeMirror 
           value={value}  
           height="100%"
