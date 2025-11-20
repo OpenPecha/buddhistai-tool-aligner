@@ -34,6 +34,7 @@ export interface EditorContextValue {
   syncScrollToLine: (fromEditor: 'source' | 'target', lineNumber: number) => void;
   syncToClickedLine: (clickPosition: number, fromEditor: 'source' | 'target') => void;
   syncLineSelection: (fromEditor: 'source' | 'target', lineNumber: number) => void;
+  syncTextSelection: (fromEditor: 'source' | 'target', selectionStart: number, selectionEnd: number) => void;
   isScrollSyncing: React.RefObject<boolean>;
   isScrollSyncEnabled: boolean;
   setScrollSyncEnabled: (enabled: boolean) => void;

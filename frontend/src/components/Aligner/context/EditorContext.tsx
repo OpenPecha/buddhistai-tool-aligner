@@ -1,6 +1,5 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import type { SentenceMapping } from './types';
 import { EditorContext, type EditorContextValue, type ExternalAlignmentData } from './context';
@@ -228,7 +227,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
       
       // Try to use external alignment data first, then internal mappings, then fallback to line-based sync
       let targetPosition: number | null = null;
-      
       // Priority 1: Use external alignment data if available
       if (externalAlignmentData?.data) {
         const { alignment_annotation, target_annotation } = externalAlignmentData.data;
@@ -309,7 +307,6 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
       
       // Priority 2: Use internal alignment mappings
       const alignmentMappings = generateSentenceMappings();
-      
       if (alignmentMappings.length > 0) {
         // Find the alignment segment that contains the click position
         
@@ -337,14 +334,12 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
             }
           }
         }
-        
         if (targetPosition !== null) {
           // Temporarily disable scroll sync to prevent feedback loop
           isScrollSyncing.current = true;
           
           // Capture targetPosition in a const for the setTimeout callback
           const finalTargetPosition = targetPosition;
-          
           // First, ensure the target line is visible to get accurate coordinates
           const scrollEffect = EditorView.scrollIntoView(finalTargetPosition, {
             y: 'start',
@@ -368,7 +363,45 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
               const newScrollTop = otherEditor.view.scrollDOM.scrollTop + offsetDifference;
               otherEditor.view.scrollDOM.scrollTop = Math.max(0, newScrollTop);
             }
-            
+
+            const activeEditor = fromEditor === 'source' ? sourceEditorRef.current : targetEditorRef.current;
+            const alternateEditor = fromEditor === 'source' ? targetEditorRef.current : sourceEditorRef.current;
+            const activeEditorElement= activeEditor?.editor;
+            const alternateEditorElement= alternateEditor?.editor;
+
+            const activeLine = activeEditorElement?.getElementsByClassName('cm-activeLineGutter')[0];
+            const activeLineRect = activeLine?.getBoundingClientRect();
+            const activeLineTop = activeLineRect?.top || 0;
+      
+            const activeLineNumber= activeLine?.textContent;
+            if(parseInt(activeLineNumber || '0') > 0) {
+            //  get the element which has content equal to the activeLine number from alternateEditorElement
+            //apply a custom background color to the element
+            const elements = alternateEditorElement?.querySelectorAll('.cm-gutterElement');
+            const targetElement = Array.from(elements || []).find(el => el.textContent?.trim() === activeLineNumber?.trim());
+            if(targetElement) {
+              // Apply animated background color change
+              (targetElement as HTMLElement).style.transition = 'background-color 0.3s ease';
+              (targetElement as HTMLElement).style.fontWeight = 'bold';
+              (targetElement as HTMLElement).style.fontSize = '1.8rem';
+              (targetElement as HTMLElement).style.color = 'gray';
+              setTimeout(() => {
+                // Scroll the alternate editor to align the target element with the active line position
+                const alternateScrollContainer = alternateEditor?.view?.scrollDOM;
+                if (alternateScrollContainer && targetElement) {
+                  const targetElementRect = targetElement.getBoundingClientRect();
+                  const currentTargetTop = targetElementRect.top;
+                  const scrollOffset = currentTargetTop - activeLineTop;
+                  const newScrollTop = alternateScrollContainer.scrollTop + scrollOffset;
+                  alternateScrollContainer.scrollTop = Math.max(0, newScrollTop);
+                }
+                (targetElement as HTMLElement).style.transition = '';
+              }, 0);
+              // Remove the background color after animation
+             
+            }
+            }
+          
             // Reset the sync flag after adjustment
             setTimeout(() => {
               isScrollSyncing.current = false;
@@ -379,62 +412,13 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         }
       }
       
-      // Fallback to line-based synchronization if no alignment mapping found
-      const doc = clickedEditor.view.state.doc;
-      const line = doc.lineAt(clickPosition);
-      const lineNumber = line.number;
-      
-      // Get the target document
-      const targetDoc = otherEditor.view.state.doc;
-      const totalTargetLines = targetDoc.lines;
-      
-      // Ensure the target line exists
-      const targetLineNumber = Math.min(lineNumber, totalTargetLines);
-      
-      if (targetLineNumber > 0) {
-        // Get the position of the target line
-        const targetLinePos = targetDoc.line(targetLineNumber).from;
-        
-        // Temporarily disable scroll sync to prevent feedback loop
-        isScrollSyncing.current = true;
-        
-        // First, ensure the target line is visible to get accurate coordinates
-        const scrollEffect = EditorView.scrollIntoView(targetLinePos, {
-          y: 'start',
-          yMargin: 0
-        });
-        otherEditor.view.dispatch({
-          effects: [scrollEffect]
-        });
-        
-        // Wait for scroll to complete, then adjust to match exact offset
-        setTimeout(() => {
-          if (!otherEditor?.view) {
-            isScrollSyncing.current = false;
-            return;
-          }
-          const targetCoords = otherEditor.view.coordsAtPos(targetLinePos);
-          if (targetCoords) {
-            const otherScrollRect = otherEditor.view.scrollDOM.getBoundingClientRect();
-            const currentTargetOffset = targetCoords.top - otherScrollRect.top;
-            const offsetDifference = currentTargetOffset - clickedTopOffset;
-            const newScrollTop = otherEditor.view.scrollDOM.scrollTop + offsetDifference;
-            otherEditor.view.scrollDOM.scrollTop = Math.max(0, newScrollTop);
-          }
-          
-          // Reset the sync flag after adjustment
-          setTimeout(() => {
-            isScrollSyncing.current = false;
-          }, 50);
-        }, 50);
-        
-      }
+   
     } catch (error) {
       console.error('Error syncing to clicked line:', error);
     }
   }, [isScrollSyncEnabled, generateSentenceMappings, externalAlignmentData]);
 
-  // Line selection synchronization function
+  // Line selection synchronization function - scrolls without creating visible selection
   const syncLineSelection = useCallback((fromEditor: 'source' | 'target', lineNumber: number) => {
     if (!isScrollSyncEnabled || isScrollSyncing.current) return; // Check if sync is enabled and prevent infinite loop
     
@@ -453,31 +437,169 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
         // Get the position of the line
         const line = doc.line(clampedLineNumber);
         const lineStart = line.from;
-        const lineEnd = line.to;
         
-        // Create a selection for the entire line
-        const selection = EditorSelection.single(lineStart, lineEnd);
-        
-        // Apply the selection and scroll to it
+        // Scroll to the line without creating a selection
         const scrollEffect = EditorView.scrollIntoView(lineStart, {
           y: 'center', // Center the line in viewport
           yMargin: 50
         });
         
+        // Dispatch only the scroll effect, no selection
         targetEditor.view.dispatch({
-          selection,
           effects: [scrollEffect]
         });
       }
     } catch (error) {
       console.error('Error syncing line selection:', error);
     } finally {
-      // Reset the flag after a short delay to allow the selection to complete
-      setTimeout(() => {
+      // Reset the flag immediately for smoother sync
+      requestAnimationFrame(() => {
         isScrollSyncing.current = false;
-      }, 100);
+      });
     }
   }, [isScrollSyncEnabled]);
+
+  // Text selection synchronization function - syncs based on selected text range
+  const syncTextSelection = useCallback((fromEditor: 'source' | 'target', selectionStart: number, selectionEnd: number) => {
+    if (!isScrollSyncEnabled || isScrollSyncing.current) return;
+    
+    isScrollSyncing.current = true;
+    
+    try {
+      const sourceEditor = sourceEditorRef.current;
+      const targetEditor = targetEditorRef.current;
+      const clickedEditor = fromEditor === 'source' ? sourceEditor : targetEditor;
+      const otherEditor = fromEditor === 'source' ? targetEditor : sourceEditor;
+      
+      if (!clickedEditor?.view || !otherEditor?.view) return;
+      
+      // Try to use external alignment data first, then internal mappings
+      let targetPosition: number | null = null;
+      
+      // Priority 1: Use external alignment data if available
+      if (externalAlignmentData?.data) {
+        const { alignment_annotation, target_annotation } = externalAlignmentData.data;
+        
+        if (fromEditor === 'source') {
+          // Find source annotation containing selection
+          const sourceAnnotation = alignment_annotation.find(ann => 
+            selectionStart >= ann.span.start && selectionEnd <= ann.span.end
+          );
+          
+          if (sourceAnnotation && sourceAnnotation.alignment_index.length > 0) {
+            const targetIndex = sourceAnnotation.alignment_index[0];
+            const targetAnnotation = target_annotation.find(ann => ann.index === targetIndex);
+            
+            if (targetAnnotation) {
+              targetPosition = targetAnnotation.span.start;
+            }
+          }
+        } else {
+          // Find target annotation containing selection
+          const targetAnnotation = target_annotation.find(ann => 
+            selectionStart >= ann.span.start && selectionEnd <= ann.span.end
+          );
+          
+          if (targetAnnotation) {
+            const sourceAnnotation = alignment_annotation.find(ann => 
+              ann.alignment_index.includes(targetAnnotation.index)
+            );
+            
+            if (sourceAnnotation) {
+              targetPosition = sourceAnnotation.span.start;
+            }
+          }
+        }
+        
+        if (targetPosition !== null) {
+          // Scroll to target position without creating selection
+          const scrollEffect = EditorView.scrollIntoView(targetPosition, {
+            y: 'center',
+            yMargin: 50
+          });
+          
+          otherEditor.view.dispatch({
+            effects: [scrollEffect]
+          });
+          
+          requestAnimationFrame(() => {
+            isScrollSyncing.current = false;
+          });
+          return;
+        }
+      }
+      
+      // Priority 2: Use internal alignment mappings
+      const alignmentMappings = generateSentenceMappings();
+      
+      if (alignmentMappings.length > 0) {
+        for (const mapping of alignmentMappings) {
+          const sourceSpan = mapping.source;
+          const targetSpan = mapping.target;
+          
+          if (fromEditor === 'source') {
+            if (selectionStart >= sourceSpan.start && selectionEnd <= sourceSpan.end) {
+              if (targetSpan.start >= 0 && targetSpan.end >= 0) {
+                targetPosition = targetSpan.start;
+                break;
+              }
+            }
+          } else {
+            if (selectionStart >= targetSpan.start && selectionEnd <= targetSpan.end) {
+              if (sourceSpan.start >= 0 && sourceSpan.end >= 0) {
+                targetPosition = sourceSpan.start;
+                break;
+              }
+            }
+          }
+        }
+        
+        if (targetPosition !== null) {
+          const scrollEffect = EditorView.scrollIntoView(targetPosition, {
+            y: 'center',
+            yMargin: 50
+          });
+          
+          otherEditor.view.dispatch({
+            effects: [scrollEffect]
+          });
+          
+          requestAnimationFrame(() => {
+            isScrollSyncing.current = false;
+          });
+          return;
+        }
+      }
+      
+      // Fallback: sync based on line number
+      const doc = clickedEditor.view.state.doc;
+      const line = doc.lineAt(selectionStart);
+      const lineNumber = line.number;
+      
+      const targetDoc = otherEditor.view.state.doc;
+      const totalTargetLines = targetDoc.lines;
+      const targetLineNumber = Math.min(lineNumber, totalTargetLines);
+      
+      if (targetLineNumber > 0) {
+        const targetLinePos = targetDoc.line(targetLineNumber).from;
+        const scrollEffect = EditorView.scrollIntoView(targetLinePos, {
+          y: 'center',
+          yMargin: 50
+        });
+        
+        otherEditor.view.dispatch({
+          effects: [scrollEffect]
+        });
+      }
+      
+      requestAnimationFrame(() => {
+        isScrollSyncing.current = false;
+      });
+    } catch (error) {
+      console.error('Error syncing text selection:', error);
+      isScrollSyncing.current = false;
+    }
+  }, [isScrollSyncEnabled, generateSentenceMappings, externalAlignmentData]);
 
   const value: EditorContextValue = useMemo(() => ({
     sourceEditorRef,
@@ -488,6 +610,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
     syncScrollToLine,
     syncToClickedLine,
     syncLineSelection,
+    syncTextSelection,
     isScrollSyncing,
     isScrollSyncEnabled,
     setScrollSyncEnabled,
@@ -497,7 +620,7 @@ export function EditorProvider({ children }: { readonly children: React.ReactNod
     setOriginalSourceText,
     setOriginalTargetText,
     isContentValid,
-  }), [getSourceContent, getTargetContent, generateSentenceMappings, syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncEnabled, externalAlignmentData, loadAlignmentData, setOriginalSourceText, setOriginalTargetText, isContentValid]);
+  }), [getSourceContent, getTargetContent, generateSentenceMappings, syncScrollToLine, syncToClickedLine, syncLineSelection, syncTextSelection, isScrollSyncEnabled, externalAlignmentData, loadAlignmentData, setOriginalSourceText, setOriginalTargetText, isContentValid]);
 
   return (
     <EditorContext.Provider value={value}>

@@ -27,7 +27,7 @@ function TextEditor({
   fontSize
 }: TextEditorProps) {
   // Editor context for scroll synchronization
-  const { syncScrollToLine, syncToClickedLine, syncLineSelection, isScrollSyncing, setOriginalSourceText, setOriginalTargetText, sourceEditorRef, targetEditorRef } = useEditorContext();
+  const { syncToClickedLine, syncLineSelection, syncTextSelection, isScrollSyncing, setOriginalSourceText, setOriginalTargetText, sourceEditorRef, targetEditorRef } = useEditorContext();
   
   // Combined ref callback to update both prop ref and context refs
   const combinedRef = React.useCallback((editorRef: ReactCodeMirrorRef | null) => {
@@ -176,16 +176,20 @@ function TextEditor({
         };
         
         onSelectionChange.onTextSelect(textSelection);
+        
+        // Sync scroll position in the other editor based on text selection
+        if (!isScrollSyncing.current) {
+          syncTextSelection(editorType, range.from, range.to);
+        }
       }
     }
-  }, [value, editorId, onSelectionChange, editorType, isSourceLoaded, shouldShowPlaceholder]);
+  }, [value, editorId, onSelectionChange, editorType, isSourceLoaded, shouldShowPlaceholder, syncTextSelection, isScrollSyncing]);
 
   // Handle cursor position changes for line synchronization
   const handleCursorChange = React.useCallback((view: EditorView) => {
     if (shouldShowPlaceholder || isScrollSyncing.current) {
       return;
     }
-    
     try {
       const selection = view.state.selection.main;
       // Only sync if it's a cursor position (not a text selection)
@@ -234,6 +238,7 @@ function TextEditor({
 
   // Handle click synchronization
   const handleClick = React.useCallback((view: EditorView, event: MouseEvent) => {
+    
     try {
       // Get the position where the user clicked
       const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
@@ -391,18 +396,7 @@ function TextEditor({
     });
   }, [editorType, syncLineSelection]);
 
-  // Create cursor position synchronization extension
-  const cursorSyncExtension = React.useMemo(() => {
-    return EditorView.updateListener.of((update) => {
-      // Only handle selection changes, not other updates
-      if (update.selectionSet && !update.transactions.some(tr => tr.isUserEvent('input'))) {
-        // Delay the cursor change handling to avoid conflicts with text selection
-        setTimeout(() => {
-          handleCursorChange(update.view);
-        }, 50);
-      }
-    });
-  }, [handleCursorChange]);
+  
 
   // Create extension to prevent text input except newlines
   const preventTextInputExtension = React.useMemo(() => {
@@ -563,10 +557,7 @@ function TextEditor({
             preventTextInputExtension,
             // Click synchronization
             clickSyncExtension,
-            // Line number click synchronization
             lineNumberClickExtension,
-            // Cursor position synchronization
-            cursorSyncExtension
           ]}
         />
         

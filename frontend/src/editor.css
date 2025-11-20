@@ -2,6 +2,6 @@
 padding-block:10px !important
 }
 
-.ͼ4 .cm-gutterElement{
-    padding-top:5px !important
+.cm-gutter .cm-gutterElement:not(:first-child){
+    padding-block:10px !important
 }
