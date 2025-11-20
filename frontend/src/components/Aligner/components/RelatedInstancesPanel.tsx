@@ -41,9 +41,6 @@ export function RelatedInstancesPanel({
     sourceInstanceId
   );
 
-  const availableTargetInstances = React.useMemo(() => {
-    return Array.isArray(relatedInstances) ? relatedInstances : [];
-  }, [relatedInstances]);
 
   const getInstanceTitle = (instance: RelatedInstance): string => {
     const isNewFormat = 'instance_id' in instance && 'metadata' in instance;
@@ -138,7 +135,7 @@ export function RelatedInstancesPanel({
         </div>
       </div>
 
-     <AlignmentList isLoadingRelatedInstances={isLoadingRelatedInstances} relatedInstancesError={relatedInstancesError} availableTargetInstances={availableTargetInstances} selectedTargetInstanceId={selectedTargetInstanceId} sourceInstanceId={sourceInstanceId} onTargetInstanceSelect={onTargetInstanceSelect} getInstanceTitle={getInstanceTitle} getInstanceMetadata={getInstanceMetadata}/>
+     <AlignmentList isLoadingRelatedInstances={isLoadingRelatedInstances} relatedInstancesError={relatedInstancesError} availableTargetInstances={relatedInstances} selectedTargetInstanceId={selectedTargetInstanceId} sourceInstanceId={sourceInstanceId} onTargetInstanceSelect={onTargetInstanceSelect} getInstanceTitle={getInstanceTitle} getInstanceMetadata={getInstanceMetadata}/>
     </div>
   );
 }

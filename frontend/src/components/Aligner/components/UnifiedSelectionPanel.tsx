@@ -694,7 +694,6 @@ function UnifiedSelectionPanel() {
     selectedTextId && !isCheckingBdrcText;
   const shouldShowRelatedInstances =
     selectedTextId &&
-    !isCheckingBdrcText &&
     sourceInstanceId;
 
   return (
