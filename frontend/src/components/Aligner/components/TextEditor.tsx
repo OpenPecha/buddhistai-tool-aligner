@@ -6,6 +6,7 @@ import type { TextSelection, SelectionHandler, TextMapping, EditorType } from '.
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
 import { useEditorContext } from '../context';
 import { cleanAnnotation } from '../../../api/text';
+import { toast } from "sonner"
 
 interface TextEditorProps {
   readonly ref: React.RefObject<ReactCodeMirrorRef | null> | null;
@@ -423,8 +424,7 @@ function TextEditor({
       // If content (without newlines) changed, revert the change
       if (originalContent !== newContent) {
         // Use setTimeout to avoid dispatch during update
-        alert("you cannot apply segment before a space text will get reset to original text");
-        
+        toast.error("you cannot apply segment before a space text will get reset to original text")
         setTimeout(() => {
           update.view.dispatch({
             changes: {

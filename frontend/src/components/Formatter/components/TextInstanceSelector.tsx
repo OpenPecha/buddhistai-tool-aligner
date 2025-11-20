@@ -252,7 +252,7 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
   // Handle local text selection - use text ID directly without fetching
   const handleLocalTextSelect = useCallback((text: TextTitleSearchResult) => {
     // Use the text_id directly (no fetching needed, unlike BDRC selection)
-    setSelectedTextId(text.text_id);
+    setSelectedTextId(text.id);
     setSelectedInstanceId(null);
     setProcessingError(null);
     
@@ -262,7 +262,7 @@ export const TextInstanceSelector: React.FC<TextInstanceSelectorProps> = ({
     }
     
     // Update search query to show selected text title
-    setBdrcSearchQuery(text.title);
+    setBdrcSearchQuery(text.title.bo || text.title.en || `Text ${text.id}`);
     setShowBdrcResults(false);
   }, [selectedBdrcResult, handleResetBdrcSelection, setBdrcSearchQuery, setShowBdrcResults]);
 

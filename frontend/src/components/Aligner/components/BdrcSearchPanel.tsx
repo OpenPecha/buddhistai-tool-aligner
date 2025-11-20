@@ -158,16 +158,15 @@ export function BdrcSearchPanel({
                 Local search error: {localTextError}
               </div>
             )}
-            
             {hasLocalResults && localTextResults.map((text) => {
               return (
                 <button
-                  key={text.text_id}
-                  onClick={() => onLocalTextSelect(text)}
-                  className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                key={text.id}
+                onClick={() => onLocalTextSelect(text)}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
                 >
                   <div className="font-medium text-sm text-gray-900">
-                    {text.title || `Text ${text.text_id}`}
+                    {text.title.tib ||text.title.bo || text.title.en || `Text ${text.id}`}
                   </div>
                 </button>
               );

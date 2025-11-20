@@ -12,7 +12,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-
+import { Toaster } from "./components/ui/sonner"
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +50,7 @@ function App() {
           </Routes>
         </div>
       </Router>
+      <Toaster />
     </QueryClientProvider>
   );
 }

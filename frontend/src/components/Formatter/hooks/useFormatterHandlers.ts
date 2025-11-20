@@ -9,6 +9,7 @@ import {
   searchInTree, 
   createTextMapping 
 } from '../utils/search-utils';
+import { toast } from 'sonner';
 
 interface UseFormatterHandlersProps {
   treeData: TreeNode[];
@@ -66,7 +67,7 @@ export const useFormatterHandlers = ({
    */
   const handleCreateMapping = (searchResult: SearchResult) => {
     if (!selectedSegment || !textSelection || textSelection?.nodeId !== selectedSegment) {
-      alert('Please select text in the current segment first');
+      toast.error('Please select text in the current segment first')
       return;
     }
     
@@ -173,7 +174,7 @@ export const useFormatterHandlers = ({
     };
     
     if (isDescendant(treeData, nodeId, targetId)) {
-      alert('Cannot move a node into its own descendant');
+      toast.error('Cannot move a node into its own descendant')
       return;
     }
     

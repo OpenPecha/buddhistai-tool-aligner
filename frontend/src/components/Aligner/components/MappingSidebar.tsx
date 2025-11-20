@@ -8,6 +8,7 @@ import { fetchRelatedInstances } from '../../../api/instances';
 import type { Annotations } from '../../../types/text';
 import { useTranslation } from 'react-i18next';
 import { generateAlignment } from '../utils/generateAnnotation';
+import { toast } from 'sonner';
 
 
 
@@ -82,7 +83,7 @@ const MappingSidebar = () => {
       setSaveSuccess(t('mapping.alignmentSavedSuccess'));
       setSaveError(null);
       // Show success alert and redirect to home page
-      globalThis.alert(t('mapping.alignmentSavedSuccess'));
+      toast.success(t('mapping.alignmentSavedSuccess'));
       clearAllSelections();
       resetAllSelections();
       navigate('/');
@@ -120,7 +121,7 @@ const MappingSidebar = () => {
       clearAllSelections();
       resetAllSelections();
       // Show success alert and redirect to home page
-      globalThis.alert(t('mapping.alignmentUpdatedSuccess') || 'Alignment updated successfully');
+      toast.success(t('mapping.alignmentUpdatedSuccess') || 'Alignment updated successfully');
       navigate('/');
     },
     onError: (error) => {

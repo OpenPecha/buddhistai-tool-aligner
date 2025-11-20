@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface TextLoaderProps {
   onTextLoad: (text: string, source: 'file' | 'api') => void;
@@ -22,10 +23,10 @@ const TextLoader: React.FC<TextLoaderProps> = ({ onTextLoad, isLoading = false }
         }
       } catch (error) {
         console.error('Error reading file:', error);
-        alert('Error reading file. Please try again.');
+        toast.error('Error reading file. Please try again.')
       }
     } else {
-      alert('Please select a valid text file (.txt)');
+      toast.error('Please select a valid text file (.txt)')
     }
   };
 

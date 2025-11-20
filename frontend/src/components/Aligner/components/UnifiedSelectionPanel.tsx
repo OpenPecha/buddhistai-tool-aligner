@@ -139,8 +139,8 @@ function UnifiedSelectionPanel() {
 
   // Handle local text selection - use text ID directly without fetching
   const handleLocalTextSelect = useCallback((text: TextTitleSearchResult) => {
-    setSelectedTextId(text.text_id);
-    setSelectedLocalTextTitle(text.title);
+    setSelectedTextId(text.id);
+    setSelectedLocalTextTitle(text.title.bo || text.title.en || `Text ${text.id}`);
     setSelectedInstanceId(null);
     // Reset BDRC selection when manually selecting local text
     if (selectedBdrcResult) {

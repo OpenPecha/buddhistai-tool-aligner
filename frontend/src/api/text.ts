@@ -213,8 +213,8 @@ export const createTableOfContentsAnnotation = async (
 
 // Response type for title search
 export interface TextTitleSearchResult {
-  text_id: string;
-  title: string;
+  id: string;
+  title: { [key: string]: string };
   instance_id: string;
 }
 
