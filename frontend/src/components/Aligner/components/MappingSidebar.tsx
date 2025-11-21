@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useEditorContext } from '../context';
 import { useTextSelectionStore } from '../../../stores/textSelectionStore';
@@ -18,7 +18,7 @@ const MappingSidebar = () => {
   const { getSourceContent, getTargetContent, isContentValid } = useEditorContext();
   const { sourceInstanceId, targetInstanceId, hasAlignment, sourceText, targetText,clearAllSelections,resetAllSelections } = useTextSelectionStore();
   const [annotationId, setAnnotationId] = useState<string | null>(null);
- 
+  const queryClient = useQueryClient();
   // Local state for success/error messages
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -83,10 +83,10 @@ const MappingSidebar = () => {
       setSaveSuccess(t('mapping.alignmentSavedSuccess'));
       setSaveError(null);
       // Show success alert and redirect to home page
+      queryClient.invalidateQueries({ queryKey: ['relatedInstances'] });
       toast.success(t('mapping.alignmentSavedSuccess'));
       clearAllSelections();
       resetAllSelections();
-      navigate('/');
     },
     onError: (error) => {
       console.error(t('mapping.savingAlignmentFailed'), error);
@@ -121,8 +121,8 @@ const MappingSidebar = () => {
       clearAllSelections();
       resetAllSelections();
       // Show success alert and redirect to home page
+      queryClient.invalidateQueries({ queryKey: ['relatedInstances'] });
       toast.success(t('mapping.alignmentUpdatedSuccess') || 'Alignment updated successfully');
-      navigate('/');
     },
     onError: (error) => {
       console.error('Failed to update alignment:', error);
@@ -190,16 +190,16 @@ const MappingSidebar = () => {
           index: typeof item.index === 'string' ? Number.parseInt(item.index, 10) : (item.index ?? 0),
           alignment_index: (item.alignment_index ?? []).map(idx => typeof idx === 'string' ? Number.parseInt(idx, 10) : idx),
         }));
-      console.log(targetAnnotation, alignmentAnnotation);
-      // updateAnnotationMutation.mutate({
-      //   annotationId,
-      //   annotationData: {
-      //     type: 'alignment',
-      //     target_manifestation_id: sourceInstanceId,
-      //     target_annotation: targetAnnotation,
-      //     alignment_annotation: alignmentAnnotation,
-      //   },
-      // });
+        console.log('updated')
+      updateAnnotationMutation.mutate({
+        annotationId,
+        annotationData: {
+          type: 'alignment',
+          target_manifestation_id: sourceInstanceId,
+          target_annotation: targetAnnotation,
+          alignment_annotation: alignmentAnnotation,
+        },
+      });
     } else {
       // Convert to number format for createAnnotation
       const checkCondition=(d)=>d.span.start<d.span.end;
@@ -253,7 +253,6 @@ const MappingSidebar = () => {
           };
       }
        const filtered = filterAlignedArrays(createTargetAnnotation, createAlignmentAnnotation);
-
       createAnnotationMutation.mutate({
         inferenceId: targetInstanceId,
         annotationData: {
@@ -262,7 +261,8 @@ const MappingSidebar = () => {
           target_annotation: filtered.source,
           alignment_annotation: filtered.target,
         },
-      });
+      }
+      );
     }
   };
 
@@ -284,94 +284,92 @@ const MappingSidebar = () => {
             </div>
           )}
 
-          {/* Save Button */}
-          { hasAlignment && (
-            <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">{t('mapping.alignmentSavedSuccess')}</p>
-            </div>
-          ) }
-          <button
-            onClick={handleSave}
-            className='w-full bg-blue-600 text-white font-poppins px-2 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed'
-            disabled={createAnnotationMutation.isPending || updateAnnotationMutation.isPending}
-          >
-            {(() => {
-              const isPending = createAnnotationMutation.isPending || updateAnnotationMutation.isPending;
-              if (isPending) {
-                return hasAlignment ? 'Updating...' : 'Publishing...';
-              }
-              return "Publish";
-            })()}
-          </button>
+        
+         <SaveButton hasAlignment={hasAlignment} handleSave={handleSave} disabled={createAnnotationMutation.isPending || updateAnnotationMutation.isPending}/>
         </div>
 
         {/* Confirmation Modal */}
-        {showConfirmModal && (
-          <div 
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-modal-title"
-            onClick={() => setShowConfirmModal(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setShowConfirmModal(false);
-              }
-            }}
-            className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50"
-          >
-            <div 
-              className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-md mx-4"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 id="confirm-modal-title" className="text-lg font-semibold text-gray-900">
-                  {hasAlignment ? 'Confirm Save' : 'Confirm Publish'}
-                </h3>
-              </div>
-
-              {/* Modal Body */}
-              <div className="px-6 py-4">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-red-800 mb-2">
-                      ⚠️ Dangerous Operation
-                    </h4>
-                    <p className="text-sm text-red-700">
-                      <strong>WARNING:</strong> This action will permanently modify the alignment data and cannot be easily undone. 
-                      Are you absolutely certain you want to proceed with this operation?
-                    </p>
-                   
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-                >
-                   Cancel
-                </button>
-                <button
-                  onClick={handleConfirmSave}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                >
-                  Publish
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {showConfirmModal &&  <ConfirmModal handleConfirmSave={handleConfirmSave} setShowConfirmModal={setShowConfirmModal} hasAlignment={hasAlignment} />}
       </>
   );
 };
 
 export default MappingSidebar;
+
+
+function SaveButton({hasAlignment, handleSave,disabled }: { hasAlignment: boolean, handleSave: () => void,disabled: boolean }){
+  return   <button
+  onClick={handleSave}
+  className='w-full bg-blue-600 text-white font-poppins px-2 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed'
+  disabled={disabled}
+>
+ {hasAlignment ? 'Update' : 'Publish'}
+</button>
+}
+
+
+
+function ConfirmModal({ handleConfirmSave, setShowConfirmModal, hasAlignment }: { handleConfirmSave: () => void, setShowConfirmModal: (show: boolean) => void, hasAlignment: boolean }){
+  return  <div 
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="confirm-modal-title"
+  onClick={() => setShowConfirmModal(false)}
+  onKeyDown={(e) => {
+    if (e.key === 'Escape') {
+      setShowConfirmModal(false);
+    }
+  }}
+  className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50"
+>
+  <div 
+    className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-md mx-4"
+    onClick={(e) => e.stopPropagation()}
+    onKeyDown={(e) => e.stopPropagation()}
+  >
+    {/* Modal Header */}
+    <div className="px-6 py-4 border-b border-gray-200">
+      <h3 id="confirm-modal-title" className="text-lg font-semibold text-gray-900">
+        {hasAlignment ? 'Confirm Save' : 'Confirm Publish'}
+      </h3>
+    </div>
+
+    {/* Modal Body */}
+    <div className="px-6 py-4">
+      <div className="flex items-start space-x-3">
+        <div className="flex-shrink-0">
+          <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div>
+          <h4 className="text-sm font-medium text-red-800 mb-2">
+            ⚠️ Dangerous Operation
+          </h4>
+          <p className="text-sm text-red-700">
+            <strong>WARNING:</strong> This action will permanently modify the alignment data and cannot be easily undone. 
+            Are you absolutely certain you want to proceed with this operation?
+          </p>
+         
+        </div>
+      </div>
+    </div>
+
+    {/* Modal Footer */}
+    <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+      <button
+        onClick={() => setShowConfirmModal(false)}
+        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+      >
+         Cancel
+      </button>
+      <button
+        onClick={handleConfirmSave}
+        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+      >
+        Publish
+      </button>
+    </div>
+  </div>
+</div>
+}

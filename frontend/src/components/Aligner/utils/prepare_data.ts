@@ -20,16 +20,27 @@ type AlignmentAnnotationData = {
     } | null>;
 };
 
-async function prepareData(sourceInstanceId: string, targetInstanceId: string) {
+type ProgressCallback = (message: string) => void;
+
+async function prepareData(
+    sourceInstanceId: string, 
+    targetInstanceId: string,
+    onProgress?: ProgressCallback
+) {
+    onProgress?.("Fetching source instance data...");
     const sourceInstanceData = await fetchInstance(sourceInstanceId);
+    
+    onProgress?.("Fetching target instance data...");
     const targetInstanceData = await fetchInstance(targetInstanceId);
 
+    onProgress?.("Fetching related instances...");
     const relatedInstances = await fetchRelatedInstances(sourceInstanceId);
 
     const targetInstance = relatedInstances.find(instance => instance.instance_id === targetInstanceId);
 
 
     if(targetInstance?.annotation){
+        onProgress?.("Fetching alignment annotation...");
         const annotation = await fetchAnnotation(targetInstance?.annotation);
     
         const targetText=targetInstanceData.content || "";
@@ -41,12 +52,15 @@ async function prepareData(sourceInstanceId: string, targetInstanceId: string) {
             throw new Error('Invalid annotation data structure');
         }
         
+        onProgress?.("Reconstructing alignment segments...");
         const reconstructed_annoations=reverse_cleaned_alignments(annotationData as Parameters<typeof reverse_cleaned_alignments>[0]);
         //get th text for each alignment segment from content
         console.log('reconstruct',reconstructed_annoations);
         
+        onProgress?.("Populating missing spans...");
         const populated_annoations=populateMissingSpans(reconstructed_annoations);
         
+        onProgress?.("Adding content to annotations...");
         // Add content to each annotation based on spans
         const annotationsWithContent = addContentToAnnotations(
             populated_annoations,
@@ -54,6 +68,8 @@ async function prepareData(sourceInstanceId: string, targetInstanceId: string) {
             targetText
         );
         console.log('annotationsWithContent',annotationsWithContent);
+        
+        onProgress?.("Applying annotations to text...");
         
         return {
             source_text: sourceInstanceData.content,
@@ -63,6 +79,7 @@ async function prepareData(sourceInstanceId: string, targetInstanceId: string) {
         };
     }
     else{
+        onProgress?.("Checking for segmentation annotations...");
  
         const source_segmentation = sourceInstanceData.annotations && typeof sourceInstanceData.annotations === 'object'
         ? Object.values(sourceInstanceData.annotations)
@@ -80,12 +97,21 @@ async function prepareData(sourceInstanceId: string, targetInstanceId: string) {
             )
         : undefined;
 
+        if (source_segmentation?.annotation_id) {
+            onProgress?.("Fetching source segmentation annotation...");
+        }
         const source_segmentation_data = source_segmentation?.annotation_id 
             ? await fetchAnnotation(source_segmentation.annotation_id)
             : undefined;
+            
+        if (target_segmentation?.annotation_id) {
+            onProgress?.("Fetching target segmentation annotation...");
+        }
         const target_segmentation_data = target_segmentation?.annotation_id
             ? await fetchAnnotation(target_segmentation.annotation_id)
             : undefined;
+
+        onProgress?.("Applying segmentation to text...");
 
         return {
             source_text: sourceInstanceData.content,

@@ -8,7 +8,6 @@ import { EditorProvider, useEditorContext } from '../context';
 import TextNavigationBar from './TextNavigationBar';
 import MappingSidebar from './MappingSidebar';
 import FontSizeSelector from './FontSizeSelector';
-import AlignmentMappingView from './AlignmentMappingView';
 import { prepareData } from '../utils/prepare_data';
 import { reconstructSegments } from '../utils/generateAnnotation';
 import { applySegmentation } from '../../../lib/annotation';
@@ -34,8 +33,6 @@ function AlignmentWorkstationContent() {
     setAnnotationsApplied,
     setHasAlignment,
     setAnnotationData,
-    hasAlignment,
-    annotationData,
     sourceTextId,
   } = useTextSelectionStore();
 
@@ -43,8 +40,10 @@ function AlignmentWorkstationContent() {
   React.useEffect(() => {
     const loadFromUrl = async (sid: string, tid: string) => {
       try {
-        setLoadingAnnotations(true, "Loading from URL parameters...");
-        const preparedData = await prepareData(sid, tid);
+        setLoadingAnnotations(true, "Initializing...");
+        const preparedData = await prepareData(sid, tid, (message: string) => {
+          setLoadingAnnotations(true, message);
+        });
         const sourceText = preparedData.source_text;
         const targetText = preparedData.target_text;
         
@@ -57,6 +56,7 @@ function AlignmentWorkstationContent() {
             annotationData?.alignment_annotation &&
             Array.isArray(annotationData.alignment_annotation)
           ) {
+            setLoadingAnnotations(true, "Reconstructing segments...");
             setHasAlignment(true);
             // Store annotation data with content for mapping visualization
             setAnnotationData({
@@ -69,6 +69,7 @@ function AlignmentWorkstationContent() {
               sourceText,
               targetText
             );
+            setLoadingAnnotations(true, "Finalizing text display...");
             const segmentedSourceText = source.join("\n");
             const segmentedTargetText = target.join("\n");
             setSourceText(
@@ -89,6 +90,7 @@ function AlignmentWorkstationContent() {
           
           }
         } else {
+          setLoadingAnnotations(true, "Applying segmentation...");
           const sourceSegmentation = preparedData.source_segmentation_data?.data as Array<{ span: { start: number; end: number } }> | undefined;
           const targetSegmentation = preparedData.target_segmentation_data?.data as Array<{ span: { start: number; end: number } }> | undefined;
           
@@ -134,9 +136,8 @@ function AlignmentWorkstationContent() {
   }, [sourceInstanceId, targetInstanceId]);
 
   const bothTextLoaded = isSourceLoaded && isTargetLoaded;
-  const showMappingView = hasAlignment && annotationData;
 
-  // Render main content based on whether annotations exist
+  // Render main content - always show editor view
   const renderMainContent = () => {
     if (!bothTextLoaded) {
       return (
@@ -151,57 +152,8 @@ function AlignmentWorkstationContent() {
       );
     }
 
-    if (showMappingView) {
-      return (
-        // Mapping View - Show when annotations exist
-        <div className="flex-1 w-full flex min-h-0 overflow-hidden bg-gray-50">
-          <PanelGroup direction="horizontal" className="flex-1">
-            {/* Mapping View Panel */}
-            <Panel 
-              defaultSize={80} 
-              minSize={60}  
-              maxSize={90}
-              className="min-h-0 flex flex-col bg-white border-r border-gray-200"
-            >
-       
-              {/* Mapping Content */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <AlignmentMappingView />
-              </div>
-            </Panel>
-            
-            {/* Resize handle between mapping and sidebar */}
-            <PanelResizeHandle className="w-1 bg-gray-200 hover:bg-blue-400 transition-colors duration-200 cursor-col-resize flex items-center justify-center group">
-              <div className="w-0.5 h-8 bg-gray-400 rounded-full opacity-40 group-hover:opacity-100 group-hover:bg-blue-500 transition-all"></div>
-            </PanelResizeHandle>
-            
-            {/* Mapping Sidebar Panel */}
-            <Panel 
-              defaultSize={20} 
-              minSize={15} 
-              maxSize={35}
-              className="min-h-0 flex flex-col bg-white"
-            >
-              {/* Sidebar Header */}
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                  <h3 className="text-sm font-semibold text-gray-700">Actions</h3>
-                </div>
-              </div>
-              
-              {/* Sidebar Content */}
-              <div className="flex-1 min-h-0 overflow-auto">
-                <MappingSidebar  />
-              </div>
-            </Panel>
-          </PanelGroup>
-        </div>
-      );
-    }
-
     return (
-      // Editor View - Show when no annotations exist
+      // Editor View - Always show editors
       <div className="flex-1 w-full flex min-h-0 overflow-hidden bg-gray-50">
         <PanelGroup direction="horizontal" className="flex-1">
           {/* Source Editor Panel */}
@@ -308,7 +260,7 @@ function AlignmentWorkstationContent() {
           <TextNavigationBar />
         </div>
       )}
-      {/* Show mapping view if annotations exist, otherwise show editors */}
+      {/* Always show editor view */}
       {renderMainContent()}
     
       {/* Footer */}

@@ -148,7 +148,7 @@ function TextEditor({
     
     // Only newlines were added/removed - allow the change
     setValue(val);
-  }, []);
+  }, [shouldShowPlaceholder, isFullyEditable, editorType, wasInitiallyEmptyTarget, targetLoadType, setTargetTextFromFile]);
 
   // Handle text selection
   const handleSelectionChange = React.useCallback((selection: EditorSelection) => {
@@ -214,6 +214,11 @@ function TextEditor({
       return; // Allow all keyboard input
     }
     
+    // Always allow Enter key when isEditable is true (for segmentation)
+    if (isEditable && event.key === 'Enter') {
+      return; // Allow Enter key - don't block it
+    }
+    
     // For non-fully-editable editors, block destructive keys
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
@@ -228,10 +233,25 @@ function TextEditor({
       return;
     }
     
-    // Only allow Enter key when isEditable is true (for selection-only mode)
-    if (isEditable && event.key !== 'Enter') {
-      event.preventDefault();
-      event.stopPropagation();
+    // When isEditable is true (selection/segmentation mode), only allow Enter and navigation keys
+    if (isEditable) {
+      // Allow navigation and modifier keys
+      const allowedKeys = [
+        'Enter', // Explicitly allow Enter
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+        'Home', 'End', 'PageUp', 'PageDown',
+        'Tab', 'Escape',
+        'Control', 'Meta', 'Alt', 'Shift'
+      ];
+      
+      // Block text input keys but allow navigation and Enter
+      if (!allowedKeys.includes(event.key)) {
+        // Check if it's a single character (text input)
+        if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }
     }
   }, [isEditable, isFullyEditable]);
 

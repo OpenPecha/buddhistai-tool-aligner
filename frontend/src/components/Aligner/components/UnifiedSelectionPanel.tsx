@@ -776,6 +776,7 @@ function UnifiedSelectionPanel() {
           </div>
 
           <div className="flex-1 px-6 py-6 overflow-y-auto min-h-0">
+            {isLoadingInstance && <div>Loading instance...</div>}
             {selectedInstanceId ? (
               <>
                 {shouldShowRelatedInstances && (

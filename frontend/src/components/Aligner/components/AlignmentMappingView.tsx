@@ -101,6 +101,7 @@ const AlignmentMappingView: React.FC = () => {
     setIsLoadingMergedText(true);
     try {
       // Fetch original instance data to get full text content
+      // Note: These fetches happen in parallel, so we show a general message
       const [sourceInstanceData, targetInstanceData] = await Promise.all([
         fetchInstance(sourceInstanceId),
         fetchInstance(targetInstanceId)
@@ -275,25 +276,7 @@ const AlignmentMappingView: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-0 h-[86vh] pb-[10px]">
-      {/* Headers */}
-      {/* <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            <h3 className="text-sm font-semibold text-gray-700">Merged Alignment View</h3>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowEditor(!showEditor)}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-gray-600 rounded hover:bg-gray-700 transition-colors"
-          >
-            {showEditor ? 'Show Blocks' : 'Show Editor'}
-          </button>
-        </div>
-      </div> */}
-
-      {/* Content: Editor or Blocks */}
+    
       {showEditor ? (
         <div className="flex-1 min-h-0 overflow-hidden flex gap-2 relative">
       
