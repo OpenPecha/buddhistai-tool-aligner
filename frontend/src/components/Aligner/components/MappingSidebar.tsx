@@ -136,7 +136,10 @@ const MappingSidebar = () => {
   // Handle confirmation and proceed with save
   const handleConfirmSave = () => {
     setShowConfirmModal(false);
-    proceedWithSave();
+    // Small delay to allow modal to close before showing loading overlay
+    setTimeout(() => {
+      proceedWithSave();
+    }, 100);
   };
 
   // Handle saving alignment annotation
@@ -267,8 +270,27 @@ const MappingSidebar = () => {
   };
 
 
+  const isPublishing = createAnnotationMutation.isPending || updateAnnotationMutation.isPending;
+
   return (
       <>
+        {/* Publishing Loading Overlay */}
+        {isPublishing && (
+          <div className="fixed inset-0 bg-black/60 bg-opacity-60 flex items-center justify-center z-[9999]">
+            <div className="bg-white rounded-lg shadow-xl p-8 flex flex-col items-center gap-4 min-w-[300px]">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+              </div>
+              <div className="text-gray-700 text-lg font-medium">
+                {hasAlignment ? 'Updating alignment...' : 'Publishing alignment...'}
+              </div>
+              <div className="text-gray-500 text-sm">
+                Please wait while we save your changes
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="p-4">
           {/* Success Message */}
           {saveSuccess && (
@@ -285,7 +307,7 @@ const MappingSidebar = () => {
           )}
 
         
-         <SaveButton hasAlignment={hasAlignment} handleSave={handleSave} disabled={createAnnotationMutation.isPending || updateAnnotationMutation.isPending}/>
+         <SaveButton hasAlignment={hasAlignment} handleSave={handleSave} disabled={isPublishing}/>
         </div>
 
         {/* Confirmation Modal */}
