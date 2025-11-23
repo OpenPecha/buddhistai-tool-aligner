@@ -87,6 +87,9 @@ const MappingSidebar = () => {
       toast.success(t('mapping.alignmentSavedSuccess'));
       clearAllSelections();
       resetAllSelections();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     },
     onError: (error) => {
       console.error(t('mapping.savingAlignmentFailed'), error);
@@ -122,6 +125,9 @@ const MappingSidebar = () => {
       resetAllSelections();
       // Show success alert and redirect to home page
       queryClient.invalidateQueries({ queryKey: ['relatedInstances'] });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       toast.success(t('mapping.alignmentUpdatedSuccess') || 'Alignment updated successfully');
     },
     onError: (error) => {
